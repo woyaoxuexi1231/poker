@@ -178,6 +178,7 @@
             <div class="dropdown" id="top-dropdown" style="position:relative;">
                 <div class="dropdown-content py-1">
                     <button onclick="hideDropdown();showTransferModal()" class="dropdown-item"><i class="fas fa-exchange-alt text-blue-500"></i> <span th:text="#{modal.transfer.title}">转移筹码</span></button>
+                    <button onclick="hideDropdown();showPhaseCapsModal()" class="dropdown-item"><i class="fas fa-sliders text-teal-500"></i> <span th:text="#{modal.phase.caps.title}">阶段上限</span></button>
                     <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> <span th:text="#{modal.borrow.title}">借贷中心</span></button>
                     <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-slate-400"></i> <span th:text="#{modal.history.title}">操作历史</span></button>
                     <div class="h-px bg-slate-100 my-1 mx-2"></div>
@@ -200,8 +201,9 @@
             </div>
             <div class="flex items-center justify-around">
                 <div class="text-center">
-                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-1" th:text="#{room.round}">Round</div>
-                    <div class="text-xl font-black text-slate-900" id="round-display">1</div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-1" th:text="#{room.round}">Phase</div>
+                    <div class="text-xl font-black text-slate-900" id="phase-display">PRE-FLOP</div>
+                    <div class="text-[8px] font-bold text-slate-400 mt-0.5" id="phase-cap-display"></div>
                 </div>
                 <div class="w-px h-8 bg-slate-100"></div>
                 <div class="text-center">
@@ -251,6 +253,13 @@
                 </button>
             </div>
 
+            <!-- Check Section -->
+            <div id="check-section" class="mb-3" style="display:none;">
+                <button onclick="checkAction()" class="chip-btn primary w-full py-4 text-sm font-black">
+                    <i class="fas fa-check mr-2"></i><span th:text="#{room.btn.check}">CHECK</span>
+                </button>
+            </div>
+
             <!-- Undo Section -->
             <div id="undo-section" class="flex gap-2 mb-3" style="display:none;">
                 <button onclick="clearPendingAction()" id="clear-pending-btn" class="chip-btn danger flex-1">
@@ -263,17 +272,21 @@
 
             <!-- Bet/Raise Section -->
             <div id="bet-section">
-                <div class="flex justify-between gap-2 mb-3">
-                    <button onclick="doBet(1)" class="chip-btn">+1</button>
+                <div class="flex justify-between gap-2 mb-2">
+                    <button onclick="doBet(2)" class="chip-btn">+2</button>
                     <button onclick="doBet(5)" class="chip-btn">+5</button>
                     <button onclick="doBet(10)" class="chip-btn">+10</button>
-                    <button onclick="doBet(25)" class="chip-btn">+25</button>
-                    <button onclick="doBet(50)" class="chip-btn">+50</button>
+                    <button onclick="doBet(20)" class="chip-btn">+20</button>
                 </div>
+                <div class="flex justify-between gap-2 mb-3">
+                    <button onclick="deductBet(2)" class="chip-btn danger">-2</button>
+                    <button onclick="deductBet(5)" class="chip-btn danger">-5</button>
+                    <button onclick="deductBet(10)" class="chip-btn danger">-10</button>
+                    <button onclick="deductBet(20)" class="chip-btn danger">-20</button>
                 <div class="flex gap-2 mb-3">
                     <div class="custom-bet-wrap">
-                        <input type="number" id="custom-bet" th:placeholder="#{room.custom.amount}" min="1">
-                        <button onclick="doBetCustom()" class="chip-btn primary px-4" th:text="#{room.btn.add}">ADD</button>
+                        <input type="number" id="custom-bet" th:placeholder="#{room.custom.amount}" min="0">
+                        <button onclick="setPendingBet()" class="chip-btn primary px-4" th:text="#{room.btn.add}">SET</button>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -352,6 +365,36 @@
                 <button id="history-prev" onclick="loadHistory(currentHistoryPage - 1)" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:text-blue-600 disabled:opacity-30 uppercase" th:text="#{modal.history.prev}">上一页</button>
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="history-page-info">Page 1</span>
                 <button id="history-next" onclick="loadHistory(currentHistoryPage + 1)" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:text-blue-600 uppercase" th:text="#{modal.history.next}">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase Caps Settings Modal -->
+    <div id="phase-caps-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('phase-caps-modal')">
+        <div class="modal-card">
+            <h2 class="text-xl font-black text-slate-800 mb-5 flex items-center gap-2"><i class="fas fa-sliders text-teal-500 text-sm"></i> <span th:text="#{modal.phase.caps.title}">阶段上限设置</span></h2>
+            <p class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-wider" th:text="#{modal.phase.caps.desc}">设置每个阶段的最大下注总额（0=无上限）</p>
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block" th:text="#{phase.PRE_FLOP}">Pre-Flop</label>
+                    <input type="number" id="caps-pre-flop" class="modal-input" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block" th:text="#{phase.FLOP}">Flop</label>
+                    <input type="number" id="caps-flop" class="modal-input" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block" th:text="#{phase.TURN}">Turn</label>
+                    <input type="number" id="caps-turn" class="modal-input" min="0" placeholder="0">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block" th:text="#{phase.RIVER}">River</label>
+                    <input type="number" id="caps-river" class="modal-input" min="0" placeholder="0">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2.5">
+                <button onclick="closeModal('phase-caps-modal')" class="modal-btn secondary" th:text="#{modal.transfer.cancel}">取消</button>
+                <button onclick="submitPhaseCaps()" class="modal-btn primary" th:text="#{modal.phase.caps.save}">保存</button>
             </div>
         </div>
     </div>
@@ -459,6 +502,7 @@
         const i18n = {
             playersOnline: /*[[#{room.players.online('{0}')}]]*/ '{0} PLAYERS ONLINE',
             call: /*[[#{room.btn.call('')}]]*/ 'CALL',
+            check: /*[[#{room.btn.check}]]*/ 'CHECK',
             statusFolded: /*[[#{status.folded}]]*/ 'Folded',
             statusCalled: /*[[#{status.called}]]*/ 'Called',
             statusNeed: /*[[#{status.need('{0}')}]]*/ 'Need {0}',
@@ -487,7 +531,12 @@
             selectTarget: /*[[#{modal.transfer.target}]]*/ 'Select Target',
             confirmDissolve: /*[[#{toast.confirm.dissolve}]]*/ 'Are you sure you want to dissolve this room?',
             roomDissolved: /*[[#{room.dissolved}]]*/ 'Room Dissolved',
-            roomDissolvedDesc: /*[[#{room.dissolved.desc}]]*/ 'This room has been closed by the owner'
+            roomDissolvedDesc: /*[[#{room.dissolved.desc}]]*/ 'This room has been closed by the owner',
+            phasePreFlop: /*[[#{phase.PRE_FLOP}]]*/ 'Pre-Flop',
+            phaseFlop: /*[[#{phase.FLOP}]]*/ 'Flop',
+            phaseTurn: /*[[#{phase.TURN}]]*/ 'Turn',
+            phaseRiver: /*[[#{phase.RIVER}]]*/ 'River',
+            phaseCap: /*[[#{room.phase.cap('{0}')}]]*/ 'Cap: {0}'
         };
 
         let stompClient = null;
@@ -500,7 +549,8 @@
             'RAISE': /*[[#{action.RAISE}]]*/ 'Raise',
             'FOLD': /*[[#{action.FOLD}]]*/ 'Fold',
             'WIN': /*[[#{action.WIN}]]*/ 'Win',
-            'UNDO_CONFIRM': /*[[#{action.UNDO_CONFIRM}]]*/ 'Undo'
+            'UNDO_CONFIRM': /*[[#{action.UNDO_CONFIRM}]]*/ 'Undo',
+            'CHECK': /*[[#{action.CHECK}]]*/ 'Check'
         };
 
         // ── Toast ──
@@ -560,7 +610,10 @@
             const hasGame = roomData.game && !roomData.game.isFinished;
             if (hasGame) {
                 gameInfo.style.display = 'block';
-                document.getElementById('round-display').innerText = roomData.game.roundNumber;
+                const phaseName = getPhaseDisplay(roomData.game.phase);
+                document.getElementById('phase-display').innerText = phaseName;
+                const cap = roomData.game.phaseCap || 0;
+                document.getElementById('phase-cap-display').innerText = cap > 0 ? i18n.phaseCap.replace('{0}', cap) : '';
                 document.getElementById('pot-amount').innerText = roomData.game.pot;
                 document.getElementById('highest-bet').innerText = roomData.game.currentHighestBet || 0;
             } else { gameInfo.style.display = 'none'; }
@@ -620,11 +673,19 @@
                 document.getElementById('my-pending').innerText = myPending;
 
                 const callSection = document.getElementById('call-section');
+                const checkSection = document.getElementById('check-section');
                 const callAmount = highestBet - myTotalThisRound;
                 if (hasGame && highestBet > 0 && callAmount > 0 && !myPlayer.isFolded && !myPlayer.isBetConfirmed) {
                     callSection.style.display = 'block';
+                    checkSection.style.display = 'none';
                     document.getElementById('call-amount').innerText = callAmount;
-                } else { callSection.style.display = 'none'; }
+                } else if (hasGame && !myPlayer.isFolded && !myPlayer.isBetConfirmed && myTotalThisRound >= highestBet) {
+                    callSection.style.display = 'none';
+                    checkSection.style.display = 'block';
+                } else {
+                    callSection.style.display = 'none';
+                    checkSection.style.display = 'none';
+                }
             }
 
             container.innerHTML = '';
@@ -649,9 +710,12 @@
                         if (hasGame) {
                             if (player.pendingBet > 0) betHtml += `<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusPending.replace('{0}', player.pendingBet)}</span> `;
                             if (player.roundBets && player.roundBets.length > 0) {
-                                player.roundBets.forEach(rb => { betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusRound.replace('{0}', rb.amount)}</span> `; });
+                                player.roundBets.forEach(rb => { 
+                                    const phaseLabel = getPhaseShortName(rb.roundNumber);
+                                    betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">${phaseLabel}+${rb.amount}</span> `; 
+                                });
                             } else if (player.currentRoundBet > 0) {
-                                betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusRound.replace('{0}', player.currentRoundBet)}</span> `;
+                                betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">+${player.currentRoundBet}</span> `;
                             }
                             if (player.totalBet > 0) betHtml += `<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">${i18n.statusTotal.replace('{0}', player.totalBet)}</span>`;
                         }
@@ -685,10 +749,39 @@
             if (!myPlayer || myPlayer.isFolded || myPlayer.isBetConfirmed) return;
             stompClient.send("/app/room/" + roomId + "/bet", {}, JSON.stringify({ actionType: 'BET', amount: amount }));
         }
+        function deductBet(amount) {
+            if (!myPlayer || myPlayer.isFolded || myPlayer.isBetConfirmed) return;
+            if ((myPlayer.pendingBet || 0) <= 0) return;
+            stompClient.send("/app/room/" + roomId + "/deduct", {}, JSON.stringify({ actionType: 'BET', amount: amount }));
+        }
         function doBetCustom() {
             const val = parseInt(document.getElementById('custom-bet').value);
             if (val > 0) { doBet(val); document.getElementById('custom-bet').value = ''; }
             else showToast(i18n.toastInvalidAmount, 'error');
+        }
+        function setPendingBet() {
+            const val = parseInt(document.getElementById('custom-bet').value);
+            if (val >= 0) {
+                if (stompClient && stompClient.connected) {
+                    stompClient.send("/app/room/" + roomId + "/setPending", {}, JSON.stringify({ actionType: 'BET', amount: val }));
+                }
+                document.getElementById('custom-bet').value = '';
+            } else showToast(i18n.toastInvalidAmount, 'error');
+        }
+        function checkAction() {
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/room/" + roomId + "/check", {}, {});
+                showToast(i18n.check, 'info');
+            }
+        }
+        function getPhaseDisplay(phase) {
+            if (!phase) return '-';
+            const map = { 'PRE_FLOP': i18n.phasePreFlop, 'FLOP': i18n.phaseFlop, 'TURN': i18n.phaseTurn, 'RIVER': i18n.phaseRiver };
+            return map[phase] || phase;
+        }
+        function getPhaseShortName(roundNumber) {
+            const names = ['', 'PF:','FL:','TU:','RI:'];
+            return names[roundNumber] || '';
         }
         function confirmBetAction() {
             if (!myPlayer || myPlayer.pendingBet <= 0) { showToast(i18n.toastInvalidAmount, 'error'); return; }
@@ -746,6 +839,28 @@
         function showBorrowModal() { document.getElementById('borrow-modal').classList.add('show'); }
         function showRankingModal() { document.getElementById('ranking-modal').classList.add('show'); }
         function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+        function showPhaseCapsModal() {
+            if (roomData && roomData.game) {
+                document.getElementById('caps-pre-flop').value = roomData.game.preFlopCap || 0;
+                document.getElementById('caps-flop').value = roomData.game.flopCap || 0;
+                document.getElementById('caps-turn').value = roomData.game.turnCap || 0;
+                document.getElementById('caps-river').value = roomData.game.riverCap || 0;
+            }
+            document.getElementById('phase-caps-modal').classList.add('show');
+        }
+        function submitPhaseCaps() {
+            const caps = {
+                preFlopCap: parseInt(document.getElementById('caps-pre-flop').value) || 0,
+                flopCap: parseInt(document.getElementById('caps-flop').value) || 0,
+                turnCap: parseInt(document.getElementById('caps-turn').value) || 0,
+                riverCap: parseInt(document.getElementById('caps-river').value) || 0
+            };
+            if (stompClient && stompClient.connected) {
+                stompClient.send("/app/room/" + roomId + "/setPhaseCaps", {}, JSON.stringify(caps));
+            }
+            closeModal('phase-caps-modal');
+        }
 
         function submitTransfer() {
             const toUserId = parseInt(document.getElementById('transfer-to').value);

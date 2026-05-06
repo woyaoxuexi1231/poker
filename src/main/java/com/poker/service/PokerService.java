@@ -17,16 +17,19 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PokerService {
     private static final Logger log = LoggerFactory.getLogger(PokerService.class);
+    private final ConcurrentHashMap<String, Object> roomLocks = new ConcurrentHashMap<>();
+    private final TransactionTemplate transactionTemplate;
     private final RoomMapper roomMapper;
     private final RoomPlayerMapper roomPlayerMapper;
     private final GameMapper gameMapper;
@@ -37,6 +40,28 @@ public class PokerService {
     private final UserService userService;
     private final WebSocketService webSocketService;
 
+    public PokerService(PlatformTransactionManager transactionManager,
+                        RoomMapper roomMapper,
+                        RoomPlayerMapper roomPlayerMapper,
+                        GameMapper gameMapper,
+                        GamePlayerMapper gamePlayerMapper,
+                        ActionLogMapper actionLogMapper,
+                        TransferLogMapper transferLogMapper,
+                        BorrowLogMapper borrowLogMapper,
+                        UserService userService,
+                        WebSocketService webSocketService) {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.roomMapper = roomMapper;
+        this.roomPlayerMapper = roomPlayerMapper;
+        this.gameMapper = gameMapper;
+        this.gamePlayerMapper = gamePlayerMapper;
+        this.actionLogMapper = actionLogMapper;
+        this.transferLogMapper = transferLogMapper;
+        this.borrowLogMapper = borrowLogMapper;
+        this.userService = userService;
+        this.webSocketService = webSocketService;
+    }
+
     private String generateRoomId() {
         Random random = new Random();
         String roomId;
@@ -46,7 +71,6 @@ public class PokerService {
         return roomId;
     }
 
-    @Transactional
     public String createRoom(Long userId) {
         String roomId = generateRoomId();
         Room room = new Room();
@@ -69,7 +93,6 @@ public class PokerService {
         return roomId;
     }
 
-    @Transactional
     public void joinRoom(String roomId, Long userId) {
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
@@ -108,11 +131,10 @@ public class PokerService {
         broadcastRoom(roomId);
     }
 
-    @Transactional
     public void startNewGame(String roomId) {
         Game game = new Game();
         game.setRoomId(roomId);
-        game.setRoundNumber(1);
+        game.setPhase("PRE_FLOP");
         game.setCurrentHighestBet(0);
         game.setPot(0);
         game.setIsFinished(false);
@@ -140,180 +162,278 @@ public class PokerService {
         gamePlayerMapper.insert(gp);
     }
 
-    @Transactional
     public void handleBet(String roomId, String username, ActionRequest req) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User user = userService.findByUsername(username);
+            if (user == null) return;
 
-        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null) return;
 
-        Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+            Game game = getCurrentGame(roomId);
+            if (game == null || game.getIsFinished()) return;
 
-        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
-        if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
 
-        int amount = req.getAmount();
-        if (amount <= 0) return;
+            int amount = req.getAmount();
+            if (amount <= 0) return;
 
-        gp.setPendingBet(gp.getPendingBet() + amount);
-        gamePlayerMapper.updateById(gp);
-
-        broadcastRoom(roomId);
-    }
-
-    @Transactional
-    public void handleConfirmBet(String roomId, String username) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
-
-        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
-
-        Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) {
-            log.warn("⚠️ 确认下注失败：游戏不存在或已结束");
-            return;
-        }
-
-        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
-        if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
-
-        int amount = gp.getPendingBet();
-        if (amount <= 0) return;
-
-        if (rp.getBalance() < amount) {
-            log.warn("⚠️ 余额不足：玩家 {} 余额 {}，需要 {}", user.getUsername(), rp.getBalance(), amount);
-            throw new RuntimeException("余额不足");
-        }
-
-        // Deduct from balance
-        rp.setBalance(rp.getBalance() - amount);
-        roomPlayerMapper.updateById(rp);
-
-        // Move pending to confirmed
-        int newRoundBet = gp.getCurrentRoundBet() + amount;
-        gp.setCurrentRoundBet(newRoundBet);
-        gp.setTotalBet(gp.getTotalBet() + amount);
-        gp.setPendingBet(0);
-        gp.setIsBetConfirmed(true);
-        gamePlayerMapper.updateById(gp);
-
-        // Add to pot
-        game.setPot(game.getPot() + amount);
-
-        if (newRoundBet > game.getCurrentHighestBet()) {
-            // This is a RAISE: player bet more than current highest
-            int oldHighest = game.getCurrentHighestBet();
-            game.setCurrentHighestBet(newRoundBet);
-            gameMapper.updateById(game);
-
-            log.info("✅ 玩家 {} 加注: {} -> {} (最高从 {} -> {})",
-                    user.getUsername(), amount, newRoundBet, oldHighest, newRoundBet);
-
-            // Reset all OTHER non-folded players' confirmed status
-            List<GamePlayer> allGps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
-                    .eq(GamePlayer::getGameId, game.getId()));
-            for (GamePlayer other : allGps) {
-                if (other.getId().equals(gp.getId())) continue;
-                if (!other.getIsFolded() && other.getIsBetConfirmed()) {
-                    other.setIsBetConfirmed(false);
-                    gamePlayerMapper.updateById(other);
-                    log.info("✅ 重置玩家(gamePlayerId={})的下注确认状态，等待回应加注", other.getId());
-                }
+            // Phase cap check
+            int newTotal = gp.getPendingBet() + amount;
+            int phaseCap = getPhaseCap(game);
+            if (phaseCap > 0 && (gp.getCurrentRoundBet() + newTotal) > phaseCap) {
+                log.warn("⚠️ 超过当前阶段上限: 当前{} + 新{} = {} > 上限{}",
+                        gp.getCurrentRoundBet(), newTotal, gp.getCurrentRoundBet() + newTotal, phaseCap);
+                return;
             }
 
-            logAction(game.getId(), user.getId(), ActionType.RAISE, amount, game.getRoundNumber());
-        } else {
-            // This is a call (matching existing highest or less)
-            gameMapper.updateById(game);
-            log.info("✅ 玩家 {} 跟注 {}，本轮下注 {}", user.getUsername(), amount, newRoundBet);
-            logAction(game.getId(), user.getId(), ActionType.CONFIRM_BET, amount, game.getRoundNumber());
-        }
+            gp.setPendingBet(newTotal);
+            gamePlayerMapper.updateById(gp);
 
-        checkAndAdvanceRound(game);
-        broadcastRoom(roomId);
-
-        if (game.getIsFinished()) {
-            startNewGame(roomId);
             broadcastRoom(roomId);
         }
     }
 
-    @Transactional
+    public void handleSetPending(String roomId, String username, int amount) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User user = userService.findByUsername(username);
+            if (user == null) return;
+
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null) return;
+
+            Game game = getCurrentGame(roomId);
+            if (game == null || game.getIsFinished()) return;
+
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
+
+            if (amount < 0) amount = 0;
+
+            // Phase cap check
+            int phaseCap = getPhaseCap(game);
+            if (phaseCap > 0 && (gp.getCurrentRoundBet() + amount) > phaseCap) {
+                log.warn("⚠️ 超过当前阶段上限: {} > {}", gp.getCurrentRoundBet() + amount, phaseCap);
+                return;
+            }
+
+            gp.setPendingBet(amount);
+            gamePlayerMapper.updateById(gp);
+
+            broadcastRoom(roomId);
+        }
+    }
+
+    public void handleConfirmBet(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
+            User user = userService.findByUsername(username);
+            if (user == null) return null;
+
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null) return null;
+
+            Game game = getCurrentGame(roomId);
+            if (game == null || game.getIsFinished()) {
+                log.warn("🚫 确认下注失败：游戏不存在或已结束");
+                return null;
+            }
+
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return null;
+
+            int amount = gp.getPendingBet();
+            if (amount <= 0) return null;
+
+            if (rp.getBalance() < amount) {
+                log.warn("⚠️ 余额不足：玩家 {} 余额 {}，需要 {}", user.getUsername(), rp.getBalance(), amount);
+                throw new RuntimeException("余额不足");
+            }
+
+            // Deduct from balance
+            rp.setBalance(rp.getBalance() - amount);
+            roomPlayerMapper.updateById(rp);
+
+            // Move pending to confirmed
+            int newRoundBet = gp.getCurrentRoundBet() + amount;
+            gp.setCurrentRoundBet(newRoundBet);
+            gp.setTotalBet(gp.getTotalBet() + amount);
+            gp.setPendingBet(0);
+            gp.setIsBetConfirmed(true);
+            gamePlayerMapper.updateById(gp);
+
+            // Add to pot
+            game.setPot(game.getPot() + amount);
+
+            if (newRoundBet > game.getCurrentHighestBet()) {
+                // This is a RAISE: player bet more than current highest
+                int oldHighest = game.getCurrentHighestBet();
+                game.setCurrentHighestBet(newRoundBet);
+                gameMapper.updateById(game);
+
+                log.info("✅ 玩家 {} 加注: {} -> {} (最高从 {} -> {})",
+                        user.getUsername(), amount, newRoundBet, oldHighest, newRoundBet);
+
+                // Reset all OTHER non-folded players' confirmed status
+                List<GamePlayer> allGps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
+                        .eq(GamePlayer::getGameId, game.getId()));
+                for (GamePlayer other : allGps) {
+                    if (other.getId().equals(gp.getId())) continue;
+                    if (!other.getIsFolded() && other.getIsBetConfirmed()) {
+                        other.setIsBetConfirmed(false);
+                        gamePlayerMapper.updateById(other);
+                        log.info("✅ 重置玩家(gamePlayerId={})的下注确认状态，等待回应加注", other.getId());
+                    }
+                }
+
+                logAction(game.getId(), user.getId(), ActionType.RAISE, amount, game.getPhase());
+            } else {
+                // This is a call (matching existing highest or less)
+                gameMapper.updateById(game);
+                log.info("✅ 玩家 {} 跟注 {}，本轮下注 {}", user.getUsername(), amount, newRoundBet);
+                logAction(game.getId(), user.getId(), ActionType.CONFIRM_BET, amount, game.getPhase());
+            }
+
+            checkAndAdvanceRound(game);
+            broadcastRoom(roomId);
+
+            if (game.getIsFinished()) {
+                startNewGame(roomId);
+                broadcastRoom(roomId);
+            }
+            return null;
+            });
+        }
+    }
+
     public void handleCall(String roomId, String username) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
+            User user = userService.findByUsername(username);
+            if (user == null) return null;
 
-        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null) return null;
 
-        Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+            Game game = getCurrentGame(roomId);
+            if (game == null || game.getIsFinished()) return null;
 
-        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
-        if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return null;
 
-        int highestBet = game.getCurrentHighestBet();
-        if (highestBet <= 0) return;
+            int highestBet = game.getCurrentHighestBet();
+            if (highestBet <= 0) return null;
 
-        int currentBet = gp.getCurrentRoundBet() + gp.getPendingBet();
-        int callAmount = highestBet - currentBet;
-        if (callAmount <= 0) return;
+            int currentBet = gp.getCurrentRoundBet() + gp.getPendingBet();
+            int callAmount = highestBet - currentBet;
+            if (callAmount <= 0) return null;
 
-        if (rp.getBalance() < callAmount) {
-            log.warn("⚠️ 余额不足无法跟注：需要 {}，余额 {}", callAmount, rp.getBalance());
-            throw new RuntimeException("余额不足，无法跟注");
-        }
+            // Phase cap check
+            int phaseCap = getPhaseCap(game);
+            if (phaseCap > 0 && (highestBet) > phaseCap) {
+                log.warn("⚠️ 超过当前阶段上限: {} > {}", highestBet, phaseCap);
+                return null;
+            }
 
-        // Deduct from balance
-        rp.setBalance(rp.getBalance() - callAmount);
-        roomPlayerMapper.updateById(rp);
+            if (rp.getBalance() < callAmount) {
+                log.warn("⚠️ 余额不足无法跟注：需要 {}，余额 {}", callAmount, rp.getBalance());
+                throw new RuntimeException("余额不足，无法跟注");
+            }
 
-        // Clear pending and update confirmed
-        gp.setCurrentRoundBet(currentBet + callAmount);
-        gp.setTotalBet(gp.getTotalBet() + callAmount);
-        gp.setPendingBet(0);
-        gp.setIsBetConfirmed(true);
-        gamePlayerMapper.updateById(gp);
+            // Deduct from balance
+            rp.setBalance(rp.getBalance() - callAmount);
+            roomPlayerMapper.updateById(rp);
 
-        // Add to pot
-        game.setPot(game.getPot() + callAmount);
-        gameMapper.updateById(game);
+            // Clear pending and update confirmed
+            gp.setCurrentRoundBet(highestBet);
+            gp.setTotalBet(gp.getTotalBet() + callAmount);
+            gp.setPendingBet(0);
+            gp.setIsBetConfirmed(true);
+            gamePlayerMapper.updateById(gp);
 
-        log.info("✅ 玩家 {} 一键跟注 {}，本轮总计 {}", user.getUsername(), callAmount, gp.getCurrentRoundBet());
-        logAction(game.getId(), user.getId(), ActionType.CALL, callAmount, game.getRoundNumber());
+            // Add to pot
+            game.setPot(game.getPot() + callAmount);
+            gameMapper.updateById(game);
 
-        checkAndAdvanceRound(game);
-        broadcastRoom(roomId);
+            log.info("✅ 玩家 {} 一键跟注 {}，本轮总计 {}", user.getUsername(), callAmount, gp.getCurrentRoundBet());
+            logAction(game.getId(), user.getId(), ActionType.CALL, callAmount, game.getPhase());
 
-        if (game.getIsFinished()) {
-            startNewGame(roomId);
+            checkAndAdvanceRound(game);
             broadcastRoom(roomId);
+
+            if (game.getIsFinished()) {
+                startNewGame(roomId);
+                broadcastRoom(roomId);
+            }
+            return null;
+            });
         }
     }
 
-    @Transactional
+    public void handleCheck(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
+            User user = userService.findByUsername(username);
+            if (user == null) return null;
+
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null) return null;
+
+            Game game = getCurrentGame(roomId);
+            if (game == null || game.getIsFinished()) return null;
+
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return null;
+
+            // Can only check if no outstanding bet OR already matched
+            int myTotalBet = gp.getCurrentRoundBet() + gp.getPendingBet();
+            if (game.getCurrentHighestBet() > 0 && myTotalBet < game.getCurrentHighestBet()) {
+                log.warn("⚠️ 无法check，需跟注: 当前{}，最高{}", myTotalBet, game.getCurrentHighestBet());
+                return null;
+            }
+
+            gp.setIsBetConfirmed(true);
+            gp.setCurrentRoundBet(myTotalBet);
+            gp.setPendingBet(0);
+            gamePlayerMapper.updateById(gp);
+
+            log.info("✅ 玩家 {} Check", user.getUsername());
+            logAction(game.getId(), user.getId(), ActionType.CHECK, 0, game.getPhase());
+
+            checkAndAdvanceRound(game);
+            broadcastRoom(roomId);
+
+            if (game.getIsFinished()) {
+                startNewGame(roomId);
+                broadcastRoom(roomId);
+            }
+            return null;
+            });
+        }
+    }
+
     public void handleFold(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
         User user = userService.findByUsername(username);
-        if (user == null) return;
+        if (user == null) return null;
 
         RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
+        if (rp == null) return null;
 
         Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+        if (game == null || game.getIsFinished()) return null;
 
         GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
-        if (gp == null || gp.getIsFolded()) return;
+        if (gp == null || gp.getIsFolded()) return null;
 
         gp.setIsFolded(true);
         gp.setIsBetConfirmed(true);
         gamePlayerMapper.updateById(gp);
 
         log.info("✅ 玩家 {} 弃牌", user.getUsername());
-        logAction(game.getId(), user.getId(), ActionType.FOLD, 0, game.getRoundNumber());
+        logAction(game.getId(), user.getId(), ActionType.FOLD, 0, game.getPhase());
 
         // Check if only one non-folded player left (auto-win)
         List<GamePlayer> gps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
@@ -329,7 +449,7 @@ public class PokerService {
                     roomPlayerMapper.updateById(winner);
                     log.info("✅ 玩家 {} (唯一未弃牌) 赢得底池 {}", winner.getUserId(), pot);
                     game.setPot(0);
-                    logAction(game.getId(), winner.getUserId(), ActionType.WIN, pot, game.getRoundNumber());
+                    logAction(game.getId(), winner.getUserId(), ActionType.WIN, pot, game.getPhase());
                 }
             });
             game.setIsFinished(true);
@@ -342,20 +462,24 @@ public class PokerService {
             startNewGame(roomId);
             broadcastRoom(roomId);
         }
+        return null;
+        });
+        }
     }
 
-    @Transactional
     public void handleWin(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
         User user = userService.findByUsername(username);
-        if (user == null) return;
+        if (user == null) return null;
 
         RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
+        if (rp == null) return null;
 
         Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+        if (game == null || game.getIsFinished()) return null;
 
-        if (game.getPot() <= 0) return;
+        if (game.getPot() <= 0) return null;
 
         int pot = game.getPot();
         rp.setBalance(rp.getBalance() + pot);
@@ -366,15 +490,18 @@ public class PokerService {
         gameMapper.updateById(game);
 
         log.info("✅ 玩家 {} 手动领取底池 {}", user.getUsername(), pot);
-        logAction(game.getId(), user.getId(), ActionType.WIN, pot, game.getRoundNumber());
+        logAction(game.getId(), user.getId(), ActionType.WIN, pot, game.getPhase());
         broadcastRoom(roomId);
 
         startNewGame(roomId);
         broadcastRoom(roomId);
+        return null;
+        });
+        }
     }
 
-    @Transactional
     public void handleUndoBet(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
         User user = userService.findByUsername(username);
         if (user == null) return;
 
@@ -395,24 +522,26 @@ public class PokerService {
 
         log.info("✅ 玩家 {} 清空待确认下注 {}", user.getUsername(), cleared);
         broadcastRoom(roomId);
+        }
     }
 
-    @Transactional
     public void handleUndoConfirm(String roomId, String username) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
         User user = userService.findByUsername(username);
-        if (user == null) return;
+        if (user == null) return null;
 
         RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null) return;
+        if (rp == null) return null;
 
         Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+        if (game == null || game.getIsFinished()) return null;
 
         GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
-        if (gp == null || gp.getIsFolded()) return;
+        if (gp == null || gp.getIsFolded()) return null;
 
         int currentBet = gp.getCurrentRoundBet();
-        if (currentBet <= 0 || !gp.getIsBetConfirmed()) return;
+        if (currentBet <= 0 || !gp.getIsBetConfirmed()) return null;
 
         // Revert: add back to balance, remove from pot
         rp.setBalance(rp.getBalance() + currentBet);
@@ -448,8 +577,60 @@ public class PokerService {
         }
 
         log.info("✅ 玩家 {} 撤回本轮下注 {} (当前最高: {})", user.getUsername(), currentBet, newHighest);
-        logAction(game.getId(), user.getId(), ActionType.UNDO_CONFIRM, currentBet, game.getRoundNumber());
+        logAction(game.getId(), user.getId(), ActionType.UNDO_CONFIRM, currentBet, game.getPhase());
         broadcastRoom(roomId);
+        return null;
+        });
+        }
+    }
+
+    public void handleDeduct(String roomId, String username, int amount) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
+                User user = userService.findByUsername(username);
+                if (user == null) return null;
+
+                RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+                if (rp == null) return null;
+
+                Game game = getCurrentGame(roomId);
+                if (game == null || game.getIsFinished()) return null;
+
+                GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+                if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return null;
+
+                int newPending = Math.max(0, gp.getPendingBet() - amount);
+                gp.setPendingBet(newPending);
+                gamePlayerMapper.updateById(gp);
+
+                log.info("✅ 玩家 {} 减少待确认下注 {}，当前待确认: {}", user.getUsername(), amount, newPending);
+                broadcastRoom(roomId);
+                return null;
+            });
+        }
+    }
+
+    public void handleSetPhaseCaps(String roomId, String username, int preFlopCap, int flopCap, int turnCap, int riverCap) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            transactionTemplate.execute(status -> {
+                User user = userService.findByUsername(username);
+                if (user == null) return null;
+
+                Game game = getCurrentGame(roomId);
+                if (game == null) return null;
+
+                game.setPreFlopCap(preFlopCap);
+                game.setFlopCap(flopCap);
+                game.setTurnCap(turnCap);
+                game.setRiverCap(riverCap);
+                gameMapper.updateById(game);
+
+                log.info("✅ 玩家 {} 设置阶段上限: PRE_FLOP={}, FLOP={}, TURN={}, RIVER={}",
+                        user.getUsername(), preFlopCap, flopCap, turnCap, riverCap);
+                broadcastRoom(roomId);
+                return null;
+            });
+        }
     }
 
     private void checkAndAdvanceRound(Game game) {
@@ -475,16 +656,20 @@ public class PokerService {
                 roomPlayerMapper.updateById(winnerRp);
                 log.info("✅ 唯一留存玩家(gamePlayerId={}) 赢得底池 {}", winner.getId(), pot);
                 game.setPot(0);
-                logAction(game.getId(), winnerRp.getUserId(), ActionType.WIN, pot, game.getRoundNumber());
+                logAction(game.getId(), winnerRp.getUserId(), ActionType.WIN, pot, game.getPhase());
             }
             game.setIsFinished(true);
             gameMapper.updateById(game);
             return;
         }
 
-        // No bets yet this round
+        // No bets yet this phase
         if (game.getCurrentHighestBet() <= 0) {
-            log.info("ℹ️ 本轮尚未有下注，等待中...");
+            // All confirmed? If so, they all checked - advance
+            boolean allConfirmed = nonFolded.stream().allMatch(GamePlayer::getIsBetConfirmed);
+            if (allConfirmed) {
+                advanceToNextPhase(game, nonFolded);
+            }
             return;
         }
 
@@ -502,11 +687,23 @@ public class PokerService {
             return;
         }
 
-        // All matched and confirmed! Advance to next round
-        log.info("✅ 第 {} 轮下注完成，所有玩家下注金额一致 ({})，进入第 {} 轮",
-                game.getRoundNumber(), game.getCurrentHighestBet(), game.getRoundNumber() + 1);
+        // All matched and confirmed! Advance to next phase
+        advanceToNextPhase(game, nonFolded);
+    }
 
-        game.setRoundNumber(game.getRoundNumber() + 1);
+    private void advanceToNextPhase(Game game, List<GamePlayer> nonFolded) {
+        if ("RIVER".equals(game.getPhase())) {
+            // After River, game is finished (showdown)
+            log.info("✅ River阶段完成，游戏结束");
+            game.setIsFinished(true);
+            gameMapper.updateById(game);
+            return;
+        }
+
+        String nextPhase = getNextPhase(game.getPhase());
+        log.info("✅ {}阶段完成，进入{}阶段", game.getPhase(), nextPhase);
+
+        game.setPhase(nextPhase);
         game.setCurrentHighestBet(0);
         gameMapper.updateById(game);
 
@@ -518,57 +715,79 @@ public class PokerService {
         }
     }
 
-    @Transactional
-    public void handleTransfer(String roomId, String username, TransferRequest req) {
-        User fromUser = userService.findByUsername(username);
-        if (fromUser == null) return;
-
-        RoomPlayer fromRp = getRoomPlayer(roomId, fromUser.getId());
-        if (fromRp == null) return;
-
-        RoomPlayer toRp = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
-                .eq(RoomPlayer::getRoomId, roomId)
-                .eq(RoomPlayer::getUserId, req.getToUserId()));
-
-        if (toRp == null || fromRp.getBalance() < req.getAmount() || req.getAmount() <= 0) return;
-
-        fromRp.setBalance(fromRp.getBalance() - req.getAmount());
-        toRp.setBalance(toRp.getBalance() + req.getAmount());
-
-        roomPlayerMapper.updateById(fromRp);
-        roomPlayerMapper.updateById(toRp);
-
-        TransferLog log = new TransferLog();
-        log.setRoomId(roomId);
-        log.setFromUserId(fromUser.getId());
-        log.setToUserId(req.getToUserId());
-        log.setAmount(req.getAmount());
-        log.setCreateTime(LocalDateTime.now());
-        transferLogMapper.insert(log);
-
-        broadcastRoom(roomId);
+    private String getNextPhase(String phase) {
+        switch (phase) {
+            case "PRE_FLOP": return "FLOP";
+            case "FLOP": return "TURN";
+            case "TURN": return "RIVER";
+            default: return null;
+        }
     }
 
-    @Transactional
+    private int getPhaseCap(Game game) {
+        if (game.getPhase() == null) return 0;
+        switch (game.getPhase()) {
+            case "PRE_FLOP": return game.getPreFlopCap() != null ? game.getPreFlopCap() : 0;
+            case "FLOP": return game.getFlopCap() != null ? game.getFlopCap() : 0;
+            case "TURN": return game.getTurnCap() != null ? game.getTurnCap() : 0;
+            case "RIVER": return game.getRiverCap() != null ? game.getRiverCap() : 0;
+            default: return 0;
+        }
+    }
+
+    public void handleTransfer(String roomId, String username, TransferRequest req) {
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User fromUser = userService.findByUsername(username);
+            if (fromUser == null) return;
+
+            RoomPlayer fromRp = getRoomPlayer(roomId, fromUser.getId());
+            if (fromRp == null) return;
+
+            RoomPlayer toRp = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
+                    .eq(RoomPlayer::getRoomId, roomId)
+                    .eq(RoomPlayer::getUserId, req.getToUserId()));
+
+            if (toRp == null || fromRp.getBalance() < req.getAmount() || req.getAmount() <= 0) return;
+
+            fromRp.setBalance(fromRp.getBalance() - req.getAmount());
+            toRp.setBalance(toRp.getBalance() + req.getAmount());
+
+            roomPlayerMapper.updateById(fromRp);
+            roomPlayerMapper.updateById(toRp);
+
+            TransferLog lg = new TransferLog();
+            lg.setRoomId(roomId);
+            lg.setFromUserId(fromUser.getId());
+            lg.setToUserId(req.getToUserId());
+            lg.setAmount(req.getAmount());
+            lg.setCreateTime(LocalDateTime.now());
+            transferLogMapper.insert(lg);
+
+            broadcastRoom(roomId);
+        }
+    }
+
     public void handleBorrow(String roomId, String username, BorrowRequest req) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User user = userService.findByUsername(username);
+            if (user == null) return;
 
-        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
-        if (rp == null || req.getAmount() <= 0) return;
+            RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+            if (rp == null || req.getAmount() <= 0) return;
 
-        rp.setBalance(rp.getBalance() + req.getAmount());
-        rp.setBorrowedTotal(rp.getBorrowedTotal() + req.getAmount());
-        roomPlayerMapper.updateById(rp);
+            rp.setBalance(rp.getBalance() + req.getAmount());
+            rp.setBorrowedTotal(rp.getBorrowedTotal() + req.getAmount());
+            roomPlayerMapper.updateById(rp);
 
-        BorrowLog log = new BorrowLog();
-        log.setRoomId(roomId);
-        log.setUserId(user.getId());
-        log.setAmount(req.getAmount());
-        log.setCreateTime(LocalDateTime.now());
-        borrowLogMapper.insert(log);
+            BorrowLog lg = new BorrowLog();
+            lg.setRoomId(roomId);
+            lg.setUserId(user.getId());
+            lg.setAmount(req.getAmount());
+            lg.setCreateTime(LocalDateTime.now());
+            borrowLogMapper.insert(lg);
 
-        broadcastRoom(roomId);
+            broadcastRoom(roomId);
+        }
     }
 
     public List<RoomDTO> getMyRooms(Long userId) {
@@ -620,10 +839,15 @@ public class PokerService {
         if (game != null) {
             GameDTO gameDTO = new GameDTO();
             gameDTO.setId(game.getId());
-            gameDTO.setRoundNumber(game.getRoundNumber());
+            gameDTO.setPhase(game.getPhase());
             gameDTO.setCurrentHighestBet(game.getCurrentHighestBet());
             gameDTO.setPot(game.getPot());
             gameDTO.setIsFinished(game.getIsFinished());
+            gameDTO.setPhaseCap(getPhaseCap(game));
+            gameDTO.setPreFlopCap(game.getPreFlopCap());
+            gameDTO.setFlopCap(game.getFlopCap());
+            gameDTO.setTurnCap(game.getTurnCap());
+            gameDTO.setRiverCap(game.getRiverCap());
 
             dto.setGame(gameDTO);
         }
@@ -743,10 +967,10 @@ public class PokerService {
         return result;
     }
 
-    @Transactional
     public void leaveRoomPermanent(String roomId, String username) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User user = userService.findByUsername(username);
+            if (user == null) return;
 
         RoomPlayer rp = getRoomPlayer(roomId, user.getId());
         if (rp == null) return;
@@ -770,13 +994,14 @@ public class PokerService {
         }
 
         broadcastRoom(roomId);
+        }
     }
 
 
-    @Transactional
     public void dissolveRoom(String roomId, String username) {
-        User user = userService.findByUsername(username);
-        if (user == null) return;
+        synchronized (roomLocks.computeIfAbsent(roomId, k -> new Object())) {
+            User user = userService.findByUsername(username);
+            if (user == null) return;
 
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
@@ -796,6 +1021,7 @@ public class PokerService {
 
         log.info("✅ 房主 {} 解散了房间 {}", user.getUsername(), roomId);
         broadcastRoom(roomId);
+        }
     }
 
     public void broadcastRoom(String roomId) {
@@ -824,14 +1050,25 @@ public class PokerService {
                 .eq(GamePlayer::getRoomPlayerId, roomPlayerId));
     }
 
-    private void logAction(Long gameId, Long userId, ActionType type, Integer amount, Integer roundNumber) {
+    private void logAction(Long gameId, Long userId, ActionType type, Integer amount, String phase) {
         ActionLog log = new ActionLog();
         log.setGameId(gameId);
         log.setUserId(userId);
         log.setActionType(type.name());
         log.setAmount(amount);
-        log.setRoundNumber(roundNumber);
+        log.setRoundNumber(phaseToNumber(phase));
         log.setCreateTime(LocalDateTime.now());
         actionLogMapper.insert(log);
+    }
+
+    private Integer phaseToNumber(String phase) {
+        if (phase == null) return 0;
+        switch (phase) {
+            case "PRE_FLOP": return 1;
+            case "FLOP": return 2;
+            case "TURN": return 3;
+            case "RIVER": return 4;
+            default: return 0;
+        }
     }
 }

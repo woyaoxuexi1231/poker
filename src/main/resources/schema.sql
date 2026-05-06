@@ -56,10 +56,14 @@ CREATE TABLE IF NOT EXISTS `game`
 (
     `id`                  BIGINT     NOT NULL AUTO_INCREMENT,
     `room_id`             VARCHAR(6) NOT NULL,
-    `round_number`        INT        NOT NULL DEFAULT 1,
+    `phase`               VARCHAR(20) NOT NULL DEFAULT 'PRE_FLOP',
     `current_highest_bet` INT        NOT NULL DEFAULT 0,
     `pot`                 INT        NOT NULL DEFAULT 0,
     `is_finished`         TINYINT(1) NOT NULL DEFAULT 0,
+    `pre_flop_cap`        INT        NOT NULL DEFAULT 0,
+    `flop_cap`            INT        NOT NULL DEFAULT 0,
+    `turn_cap`            INT        NOT NULL DEFAULT 0,
+    `river_cap`           INT        NOT NULL DEFAULT 0,
     `created_time`        DATETIME   NOT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB

@@ -99,4 +99,36 @@ public class WsRoomController {
             pokerService.dissolveRoom(roomId, principal.getName());
         }
     }
+
+    @MessageMapping("/room/{roomId}/check")
+    public void check(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.handleCheck(roomId, principal.getName());
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/setPending")
+    public void setPending(@DestinationVariable String roomId, ActionRequest req, Principal principal) {
+        if (principal != null) {
+            pokerService.handleSetPending(roomId, principal.getName(), req.getAmount());
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/deduct")
+    public void deduct(@DestinationVariable String roomId, ActionRequest req, Principal principal) {
+        if (principal != null) {
+            pokerService.handleDeduct(roomId, principal.getName(), req.getAmount());
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/setPhaseCaps")
+    public void setPhaseCaps(@DestinationVariable String roomId, ActionRequest req, Principal principal) {
+        if (principal != null) {
+            pokerService.handleSetPhaseCaps(roomId, principal.getName(),
+                req.getPreFlopCap() != null ? req.getPreFlopCap() : 0,
+                req.getFlopCap() != null ? req.getFlopCap() : 0,
+                req.getTurnCap() != null ? req.getTurnCap() : 0,
+                req.getRiverCap() != null ? req.getRiverCap() : 0);
+        }
+    }
 }
