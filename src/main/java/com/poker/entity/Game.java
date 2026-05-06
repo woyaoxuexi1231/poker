@@ -13,6 +13,7 @@ public class Game {
     private Long id;
     private String roomId;
     private Integer roundNumber;
+    private Integer currentHighestBet;
     private Integer pot;
     private Boolean isFinished;
     private LocalDateTime createdTime;

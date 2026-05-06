@@ -15,5 +15,6 @@ public class ActionLog {
     private Long userId;
     private String actionType;
     private Integer amount;
+    private Integer roundNumber;
     private LocalDateTime createTime;
 }

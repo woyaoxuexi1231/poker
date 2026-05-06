@@ -242,7 +242,6 @@
         <div>
             <div class="flex items-center gap-2">
                 <h1 class="text-lg font-black text-gray-800">房间 <span id="display-room-id" class="text-emerald-600" th:text="${roomId}"></span></h1>
-                <span id="game-status" class="text-[10px] px-2.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500">等待中</span>
             </div>
             <div class="text-xs text-gray-400 font-medium mt-0.5" id="player-count">0 人在线</div>
         </div>
@@ -253,6 +252,8 @@
             <div class="dropdown-content py-1">
                 <button onclick="hideDropdown();showTransferModal()" class="dropdown-item"><i class="fas fa-exchange-alt text-blue-500"></i> 转移筹码</button>
                 <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> 借贷中心</button>
+                <div class="dropdown-divider"></div>
+                <button onclick="hideDropdown();leaveRoom()" class="dropdown-item"><i class="fas fa-sign-out-alt text-gray-500"></i> 离开房间</button>
             </div>
         </div>
     </div>
@@ -273,11 +274,25 @@
                         <i class="fas fa-coins text-amber-400 mr-1 text-sm"></i><span id="pot-amount">0</span>
                     </div>
                 </div>
+                <div class="w-px h-8 bg-gray-200"></div>
+                <div>
+                    <div class="text-xs font-semibold text-gray-400">最高下注</div>
+                    <div class="text-xl font-black text-emerald-600" id="highest-bet-display"><span id="highest-bet">0</span></div>
+                </div>
             </div>
         </div>
 
         <!-- Players List -->
         <div id="players-container" class="space-y-2.5"></div>
+
+        <!-- History Section -->
+        <div id="history-section" class="glass rounded-2xl p-4" style="display:none;">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold text-gray-700"><i class="fas fa-history mr-1.5 text-gray-400"></i>操作历史</h3>
+                <span class="text-[10px] text-gray-400" id="history-count">0 条</span>
+            </div>
+            <div id="history-list" class="max-h-48 overflow-y-auto space-y-0.5 text-xs"></div>
+        </div>
     </div>
 
     <!-- Fixed Bottom Action Bar -->
@@ -287,13 +302,38 @@
                 <span class="text-xs font-semibold text-gray-400">我的余额</span>
                 <div class="text-lg font-black text-blue-600" id="my-balance">200</div>
             </div>
+            <div class="text-center">
+                <span class="text-xs font-semibold text-gray-400">最高下注</span>
+                <div class="text-lg font-black text-emerald-600" id="bar-highest-bet">0</div>
+            </div>
+            <div class="text-center">
+                <span class="text-xs font-semibold text-gray-400">我本轮</span>
+                <div class="text-lg font-black text-amber-500" id="bar-my-round-bet">0</div>
+            </div>
             <div class="text-right">
-                <span class="text-xs font-semibold text-gray-400">待确认下注</span>
+                <span class="text-xs font-semibold text-gray-400">待确认</span>
                 <div class="text-lg font-black text-amber-500 pending-chip" id="my-pending">0</div>
             </div>
         </div>
 
-        <!-- Bet Buttons -->
+        <!-- Call Section (only visible when behind the highest bet) -->
+        <div id="call-section" class="mb-2" style="display:none;">
+            <button id="call-btn" onclick="callAction()" class="chip-btn emerald w-full py-3 text-base">
+                <i class="fas fa-handshake mr-2"></i>跟注 <span id="call-amount">0</span>
+            </button>
+        </div>
+
+        <!-- Undo Section -->
+        <div id="undo-section" class="flex gap-2 mb-2" style="display:none;">
+            <button onclick="clearPendingAction()" id="clear-pending-btn" class="chip-btn flex-1" style="color:#dc2626;">
+                <i class="fas fa-undo mr-1"></i>清空待确认
+            </button>
+            <button onclick="undoConfirmAction()" id="undo-confirm-btn" class="chip-btn flex-1" style="color:#dc2626;">
+                <i class="fas fa-rotate-left mr-1"></i>撤回下注
+            </button>
+        </div>
+
+        <!-- Bet/Raise Section -->
         <div id="bet-section">
             <div class="flex justify-between gap-2 mb-2">
                 <button onclick="doBet(1)" class="chip-btn">+1</button>
@@ -304,14 +344,14 @@
             </div>
             <div class="flex gap-2 mb-2">
                 <div class="custom-bet-wrap">
-                    <input type="number" id="custom-bet" placeholder="自定义" min="1">
+                    <input type="number" id="custom-bet" placeholder="加注额" min="1">
                     <button onclick="doBetCustom()" class="chip-btn gold">添加</button>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="confirmBetAction()" class="chip-btn emerald flex-1"><i class="fas fa-check mr-1"></i>确认下注</button>
+                <button onclick="confirmBetAction()" class="chip-btn blue flex-[2]"><i class="fas fa-check mr-1"></i>确认加注</button>
                 <button onclick="foldAction()" class="chip-btn rose"><i class="fas fa-times mr-1"></i>弃牌</button>
-                <button onclick="winAction()" class="chip-btn purple"><i class="fas fa-trophy mr-1"></i>胜利</button>
+                <button onclick="winAction()" class="chip-btn purple"><i class="fas fa-trophy mr-1"></i>收池</button>
             </div>
         </div>
     </div>
@@ -348,6 +388,7 @@
         let roomData = null;
         let myPlayer = null;
         const avatarColors = ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
+        const actionLabels = { 'BET':'下注','CONFIRM_BET':'跟注','CALL':'跟注','RAISE':'加注','FOLD':'弃牌','WIN':'赢池','CLEAR_PENDING':'清空','UNDO_CONFIRM':'撤回' };
 
         // ── Toast ──
         function showToast(message, type = 'success') {
@@ -403,12 +444,9 @@
                 gameInfo.style.display = 'block';
                 document.getElementById('round-display').innerText = roomData.game.roundNumber;
                 document.getElementById('pot-amount').innerText = roomData.game.pot;
-                document.getElementById('game-status').innerText = '第 ' + roomData.game.roundNumber + ' 轮';
-                document.getElementById('game-status').className = 'text-[10px] px-2.5 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700';
+                document.getElementById('highest-bet').innerText = roomData.game.currentHighestBet || 0;
             } else {
                 gameInfo.style.display = 'none';
-                document.getElementById('game-status').innerText = '等待开始';
-                document.getElementById('game-status').className = 'text-[10px] px-2.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-500';
             }
 
             // Find my player
@@ -425,9 +463,20 @@
             }
 
             // Show/hide action bar
-            if (myPlayer && hasGame && !myPlayer.isFolded && !myPlayer.isBetConfirmed) {
+            if (myPlayer && hasGame && !myPlayer.isFolded) {
+                const isConfirmed = myPlayer.isBetConfirmed;
+                const hasUndoable = !isConfirmed || (myPlayer.currentRoundBet || 0) > 0;
                 actionBar.style.display = 'block';
-                betSection.style.display = 'block';
+                betSection.style.display = isConfirmed ? 'none' : 'block';
+
+                const undoSection = document.getElementById('undo-section');
+                const clearBtn = document.getElementById('clear-pending-btn');
+                const undoBtn = document.getElementById('undo-confirm-btn');
+                const showClear = !isConfirmed && (myPlayer.pendingBet || 0) > 0;
+                const showUndo = isConfirmed && (myPlayer.currentRoundBet || 0) > 0;
+                undoSection.style.display = (showClear || showUndo) ? 'flex' : 'none';
+                clearBtn.style.display = showClear ? '' : 'none';
+                undoBtn.style.display = showUndo ? '' : 'none';
             } else {
                 actionBar.style.display = 'none';
             }
@@ -435,6 +484,22 @@
             if (myPlayer) {
                 document.getElementById('my-balance').innerText = myPlayer.balance;
                 document.getElementById('my-pending').innerText = myPlayer.pendingBet || 0;
+                const highestBet = (roomData.game && roomData.game.currentHighestBet) || 0;
+                const myRoundBet = myPlayer.currentRoundBet || 0;
+                const myPending = myPlayer.pendingBet || 0;
+                const myTotalThisRound = myRoundBet + myPending;
+                document.getElementById('bar-highest-bet').innerText = highestBet;
+                document.getElementById('bar-my-round-bet').innerText = myTotalThisRound;
+
+                // Show call section if I'm behind the highest bet
+                const callSection = document.getElementById('call-section');
+                const callAmount = highestBet - myTotalThisRound;
+                if (hasGame && highestBet > 0 && callAmount > 0 && !myPlayer.isFolded && !myPlayer.isBetConfirmed) {
+                    callSection.style.display = 'block';
+                    document.getElementById('call-amount').innerText = callAmount;
+                } else {
+                    callSection.style.display = 'none';
+                }
             }
 
             // Render players
@@ -447,13 +512,19 @@
                     const color = avatarColors[index % avatarColors.length];
 
                     // Status indicators
+                    const highestBet = (roomData.game && roomData.game.currentHighestBet) || 0;
                     let statusBadge = '';
                     if (isFolded) {
                         statusBadge = '<span class="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">已弃牌</span>';
                     } else if (hasGame && player.isBetConfirmed) {
-                        statusBadge = '<span class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">已下注</span>';
+                        statusBadge = '<span class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">已跟注/已加注</span>';
                     } else if (hasGame && !player.isFolded) {
-                        statusBadge = '<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">下注中</span>';
+                        const playerTotal = (player.currentRoundBet || 0) + (player.pendingBet || 0);
+                        if (highestBet > 0 && playerTotal < highestBet) {
+                            statusBadge = '<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">需跟注 ' + (highestBet - playerTotal) + '</span>';
+                        } else {
+                            statusBadge = '<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">下注中</span>';
+                        }
                     }
 
                     // Bet info
@@ -491,6 +562,15 @@
                     container.appendChild(card);
                 });
             }
+
+            // Render history
+            const historySection = document.getElementById('history-section');
+            if (roomData.game && roomData.game.actionLogs) {
+                historySection.style.display = 'block';
+                renderHistory(roomData.game.actionLogs);
+            } else {
+                historySection.style.display = 'none';
+            }
         }
 
         // ── Actions ──
@@ -522,6 +602,22 @@
             }
         }
 
+        function callAction() {
+            if (!myPlayer || myPlayer.isFolded || myPlayer.isBetConfirmed) return;
+            const callAmountEl = document.getElementById('call-amount');
+            const amount = parseInt(callAmountEl.innerText);
+            if (amount <= 0) {
+                showToast('无需跟注', 'info');
+                return;
+            }
+            if (myPlayer.balance < amount) {
+                showToast('余额不足，无法跟注 ' + amount, 'error');
+                return;
+            }
+            stompClient.send("/app/room/" + roomId + "/call", {}, {});
+            showToast('跟注 ' + amount + ' 筹码', 'success');
+        }
+
         function winAction() {
             if (!roomData || !roomData.game || roomData.game.pot <= 0) {
                 showToast('奖池为空', 'error');
@@ -531,6 +627,45 @@
                 stompClient.send("/app/room/" + roomId + "/win", {}, {});
                 showToast('获取了全部奖池！', 'success');
             }
+        }
+
+        function clearPendingAction() {
+            stompClient.send("/app/room/" + roomId + "/undoBet", {}, {});
+            showToast('已清空待确认筹码', 'info');
+        }
+
+        function undoConfirmAction() {
+            if (!confirm('确定要撤回本轮下注吗？已确认的筹码将返还余额。')) return;
+            stompClient.send("/app/room/" + roomId + "/undoConfirm", {}, {});
+            showToast('已撤回本轮下注', 'info');
+        }
+
+        function leaveRoom() {
+            window.location.href = '/';
+        }
+
+        function renderHistory(logs) {
+            const container = document.getElementById('history-list');
+            const countEl = document.getElementById('history-count');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 text-center py-3">暂无操作记录</div>';
+                countEl.innerText = '0 条';
+                return;
+            }
+            countEl.innerText = logs.length + ' 条';
+            let html = '';
+            let currentRound = 0;
+            logs.forEach(log => {
+                if (log.roundNumber && log.roundNumber !== currentRound) {
+                    currentRound = log.roundNumber;
+                    html += '<div class="text-[10px] font-bold text-gray-400 pt-2 pb-1 border-b border-gray-50">── 第 ' + currentRound + ' 轮 ──</div>';
+                }
+                const label = actionLabels[log.actionType] || log.actionType;
+                const amountText = log.amount > 0 ? ' +' + log.amount : '';
+                const time = log.createTime ? new Date(log.createTime).toLocaleTimeString() : '';
+                html += '<div class="flex justify-between items-center py-0.5"><span><span class="font-semibold text-gray-700">' + log.nickname + '</span> <span class="text-gray-500">' + label + amountText + '</span></span><span class="text-gray-400 text-[10px]">' + time + '</span></div>';
+            });
+            container.innerHTML = html;
         }
 
         // ── Modals ──

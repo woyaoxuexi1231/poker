@@ -1,6 +1,7 @@
 package com.poker.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.poker.dto.ActionLogDTO;
 import com.poker.dto.ActionRequest;
 import com.poker.dto.BorrowRequest;
 import com.poker.dto.GameDTO;
@@ -11,6 +12,8 @@ import com.poker.entity.*;
 import com.poker.enums.ActionType;
 import com.poker.mapper.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class PokerService {
+    private static final Logger log = LoggerFactory.getLogger(PokerService.class);
     private final RoomMapper roomMapper;
     private final RoomPlayerMapper roomPlayerMapper;
     private final GameMapper gameMapper;
@@ -49,7 +53,6 @@ public class PokerService {
         room.setCreatedTime(LocalDateTime.now());
         roomMapper.insert(room);
 
-        // Auto-join the creator
         RoomPlayer rp = new RoomPlayer();
         rp.setRoomId(roomId);
         rp.setUserId(userId);
@@ -59,9 +62,7 @@ public class PokerService {
         rp.setJoinedTime(LocalDateTime.now());
         roomPlayerMapper.insert(rp);
 
-        // Auto-start game
         startNewGame(roomId);
-
         return roomId;
     }
 
@@ -70,7 +71,6 @@ public class PokerService {
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
 
-        // Check if already in room
         RoomPlayer existing = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
                 .eq(RoomPlayer::getRoomId, roomId)
                 .eq(RoomPlayer::getUserId, userId));
@@ -96,7 +96,6 @@ public class PokerService {
         rp.setJoinedTime(LocalDateTime.now());
         roomPlayerMapper.insert(rp);
 
-        // Add to current game
         Game game = getCurrentGame(roomId);
         if (game != null && !game.getIsFinished()) {
             addPlayerToGame(game.getId(), rp.getId());
@@ -110,6 +109,7 @@ public class PokerService {
         Game game = new Game();
         game.setRoomId(roomId);
         game.setRoundNumber(1);
+        game.setCurrentHighestBet(0);
         game.setPot(0);
         game.setIsFinished(false);
         game.setCreatedTime(LocalDateTime.now());
@@ -156,7 +156,7 @@ public class PokerService {
         gp.setPendingBet(gp.getPendingBet() + amount);
         gamePlayerMapper.updateById(gp);
 
-        logAction(game.getId(), user.getId(), ActionType.BET, amount);
+        logAction(game.getId(), user.getId(), ActionType.BET, amount, game.getRoundNumber());
         broadcastRoom(roomId);
     }
 
@@ -169,7 +169,10 @@ public class PokerService {
         if (rp == null) return;
 
         Game game = getCurrentGame(roomId);
-        if (game == null || game.getIsFinished()) return;
+        if (game == null || game.getIsFinished()) {
+            log.warn("⚠️ 确认下注失败：游戏不存在或已结束");
+            return;
+        }
 
         GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
         if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
@@ -177,14 +180,18 @@ public class PokerService {
         int amount = gp.getPendingBet();
         if (amount <= 0) return;
 
-        if (rp.getBalance() < amount) throw new RuntimeException("余额不足");
+        if (rp.getBalance() < amount) {
+            log.warn("⚠️ 余额不足：玩家 {} 余额 {}，需要 {}", user.getUsername(), rp.getBalance(), amount);
+            throw new RuntimeException("余额不足");
+        }
 
         // Deduct from balance
         rp.setBalance(rp.getBalance() - amount);
         roomPlayerMapper.updateById(rp);
 
         // Move pending to confirmed
-        gp.setCurrentRoundBet(gp.getCurrentRoundBet() + amount);
+        int newRoundBet = gp.getCurrentRoundBet() + amount;
+        gp.setCurrentRoundBet(newRoundBet);
         gp.setTotalBet(gp.getTotalBet() + amount);
         gp.setPendingBet(0);
         gp.setIsBetConfirmed(true);
@@ -192,44 +199,95 @@ public class PokerService {
 
         // Add to pot
         game.setPot(game.getPot() + amount);
-        gameMapper.updateById(game);
 
-        logAction(game.getId(), user.getId(), ActionType.CONFIRM_BET, amount);
+        if (newRoundBet > game.getCurrentHighestBet()) {
+            // This is a RAISE: player bet more than current highest
+            int oldHighest = game.getCurrentHighestBet();
+            game.setCurrentHighestBet(newRoundBet);
+            gameMapper.updateById(game);
 
-        // Check if should advance round
+            log.info("✅ 玩家 {} 加注: {} -> {} (最高从 {} -> {})",
+                    user.getUsername(), amount, newRoundBet, oldHighest, newRoundBet);
+
+            // Reset all OTHER non-folded players' confirmed status
+            List<GamePlayer> allGps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
+                    .eq(GamePlayer::getGameId, game.getId()));
+            for (GamePlayer other : allGps) {
+                if (other.getId().equals(gp.getId())) continue;
+                if (!other.getIsFolded() && other.getIsBetConfirmed()) {
+                    other.setIsBetConfirmed(false);
+                    gamePlayerMapper.updateById(other);
+                    log.info("✅ 重置玩家(gamePlayerId={})的下注确认状态，等待回应加注", other.getId());
+                }
+            }
+
+            logAction(game.getId(), user.getId(), ActionType.RAISE, amount, game.getRoundNumber());
+        } else {
+            // This is a call (matching existing highest or less)
+            gameMapper.updateById(game);
+            log.info("✅ 玩家 {} 跟注 {}，本轮下注 {}", user.getUsername(), amount, newRoundBet);
+            logAction(game.getId(), user.getId(), ActionType.CONFIRM_BET, amount, game.getRoundNumber());
+        }
+
         checkAndAdvanceRound(game);
-
         broadcastRoom(roomId);
+
+        if (game.getIsFinished()) {
+            startNewGame(roomId);
+            broadcastRoom(roomId);
+        }
     }
 
-    private void checkAndAdvanceRound(Game game) {
-        List<GamePlayer> gps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
-                .eq(GamePlayer::getGameId, game.getId()));
+    @Transactional
+    public void handleCall(String roomId, String username) {
+        User user = userService.findByUsername(username);
+        if (user == null) return;
 
-        List<GamePlayer> nonFolded = gps.stream()
-                .filter(gp -> !gp.getIsFolded())
-                .collect(Collectors.toList());
+        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+        if (rp == null) return;
 
-        if (nonFolded.isEmpty()) return;
+        Game game = getCurrentGame(roomId);
+        if (game == null || game.getIsFinished()) return;
 
-        // Check all non-folded have confirmed
-        boolean allConfirmed = nonFolded.stream().allMatch(GamePlayer::getIsBetConfirmed);
-        if (!allConfirmed) return;
+        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+        if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
 
-        // Check all have same current round bet
-        int firstBet = nonFolded.get(0).getCurrentRoundBet();
-        boolean sameBet = nonFolded.stream().allMatch(gp -> gp.getCurrentRoundBet() == firstBet);
-        if (!sameBet) return;
+        int highestBet = game.getCurrentHighestBet();
+        if (highestBet <= 0) return;
 
-        // Advance to next round
-        game.setRoundNumber(game.getRoundNumber() + 1);
+        int currentBet = gp.getCurrentRoundBet() + gp.getPendingBet();
+        int callAmount = highestBet - currentBet;
+        if (callAmount <= 0) return;
+
+        if (rp.getBalance() < callAmount) {
+            log.warn("⚠️ 余额不足无法跟注：需要 {}，余额 {}", callAmount, rp.getBalance());
+            throw new RuntimeException("余额不足，无法跟注");
+        }
+
+        // Deduct from balance
+        rp.setBalance(rp.getBalance() - callAmount);
+        roomPlayerMapper.updateById(rp);
+
+        // Clear pending and update confirmed
+        gp.setCurrentRoundBet(currentBet + callAmount);
+        gp.setTotalBet(gp.getTotalBet() + callAmount);
+        gp.setPendingBet(0);
+        gp.setIsBetConfirmed(true);
+        gamePlayerMapper.updateById(gp);
+
+        // Add to pot
+        game.setPot(game.getPot() + callAmount);
         gameMapper.updateById(game);
 
-        for (GamePlayer gp : nonFolded) {
-            gp.setCurrentRoundBet(0);
-            gp.setPendingBet(0);
-            gp.setIsBetConfirmed(false);
-            gamePlayerMapper.updateById(gp);
+        log.info("✅ 玩家 {} 一键跟注 {}，本轮总计 {}", user.getUsername(), callAmount, gp.getCurrentRoundBet());
+        logAction(game.getId(), user.getId(), ActionType.CALL, callAmount, game.getRoundNumber());
+
+        checkAndAdvanceRound(game);
+        broadcastRoom(roomId);
+
+        if (game.getIsFinished()) {
+            startNewGame(roomId);
+            broadcastRoom(roomId);
         }
     }
 
@@ -251,7 +309,8 @@ public class PokerService {
         gp.setIsBetConfirmed(true);
         gamePlayerMapper.updateById(gp);
 
-        logAction(game.getId(), user.getId(), ActionType.FOLD, 0);
+        log.info("✅ 玩家 {} 弃牌", user.getUsername());
+        logAction(game.getId(), user.getId(), ActionType.FOLD, 0, game.getRoundNumber());
 
         // Check if only one non-folded player left (auto-win)
         List<GamePlayer> gps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
@@ -265,18 +324,20 @@ public class PokerService {
                     int pot = game.getPot();
                     winner.setBalance(winner.getBalance() + pot);
                     roomPlayerMapper.updateById(winner);
-                    game.setIsFinished(true);
+                    log.info("✅ 玩家 {} (唯一未弃牌) 赢得底池 {}", winner.getUserId(), pot);
                     game.setPot(0);
-                    gameMapper.updateById(game);
-                    logAction(game.getId(), winner.getUserId(), ActionType.WIN, pot);
+                    logAction(game.getId(), winner.getUserId(), ActionType.WIN, pot, game.getRoundNumber());
                 }
             });
+            game.setIsFinished(true);
+            gameMapper.updateById(game);
         }
 
         broadcastRoom(roomId);
 
         if (game.getIsFinished()) {
             startNewGame(roomId);
+            broadcastRoom(roomId);
         }
     }
 
@@ -301,11 +362,158 @@ public class PokerService {
         game.setPot(0);
         gameMapper.updateById(game);
 
-        logAction(game.getId(), user.getId(), ActionType.WIN, pot);
+        log.info("✅ 玩家 {} 手动领取底池 {}", user.getUsername(), pot);
+        logAction(game.getId(), user.getId(), ActionType.WIN, pot, game.getRoundNumber());
         broadcastRoom(roomId);
 
-        // Auto start new game
         startNewGame(roomId);
+        broadcastRoom(roomId);
+    }
+
+    @Transactional
+    public void handleUndoBet(String roomId, String username) {
+        User user = userService.findByUsername(username);
+        if (user == null) return;
+
+        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+        if (rp == null) return;
+
+        Game game = getCurrentGame(roomId);
+        if (game == null || game.getIsFinished()) return;
+
+        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+        if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
+
+        if (gp.getPendingBet() <= 0) return;
+
+        int cleared = gp.getPendingBet();
+        gp.setPendingBet(0);
+        gamePlayerMapper.updateById(gp);
+
+        log.info("✅ 玩家 {} 清空待确认下注 {}", user.getUsername(), cleared);
+        logAction(game.getId(), user.getId(), ActionType.CLEAR_PENDING, cleared, game.getRoundNumber());
+        broadcastRoom(roomId);
+    }
+
+    @Transactional
+    public void handleUndoConfirm(String roomId, String username) {
+        User user = userService.findByUsername(username);
+        if (user == null) return;
+
+        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+        if (rp == null) return;
+
+        Game game = getCurrentGame(roomId);
+        if (game == null || game.getIsFinished()) return;
+
+        GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+        if (gp == null || gp.getIsFolded()) return;
+
+        int currentBet = gp.getCurrentRoundBet();
+        if (currentBet <= 0 || !gp.getIsBetConfirmed()) return;
+
+        // Revert: add back to balance, remove from pot
+        rp.setBalance(rp.getBalance() + currentBet);
+        roomPlayerMapper.updateById(rp);
+        game.setPot(game.getPot() - currentBet);
+        gp.setCurrentRoundBet(0);
+        gp.setPendingBet(0);
+        gp.setIsBetConfirmed(false);
+        gamePlayerMapper.updateById(gp);
+
+        // Recalculate highest bet from remaining non-folded players
+        List<GamePlayer> allGps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
+                .eq(GamePlayer::getGameId, game.getId()));
+        int newHighest = allGps.stream()
+                .filter(g -> !g.getIsFolded())
+                .mapToInt(GamePlayer::getCurrentRoundBet)
+                .max()
+                .orElse(0);
+        game.setCurrentHighestBet(newHighest);
+        gameMapper.updateById(game);
+
+        // If bet changed enough that other players need to respond
+        if (newHighest > 0) {
+            for (GamePlayer other : allGps) {
+                if (other.getId().equals(gp.getId())) continue;
+                if (!other.getIsFolded() && other.getIsBetConfirmed()
+                        && other.getCurrentRoundBet() < newHighest) {
+                    other.setIsBetConfirmed(false);
+                    gamePlayerMapper.updateById(other);
+                    log.info("⚠️ 重置玩家(gamePlayerId={})的确认状态，因最高下注调整", other.getId());
+                }
+            }
+        }
+
+        log.info("✅ 玩家 {} 撤回本轮下注 {} (当前最高: {})", user.getUsername(), currentBet, newHighest);
+        logAction(game.getId(), user.getId(), ActionType.UNDO_CONFIRM, currentBet, game.getRoundNumber());
+        broadcastRoom(roomId);
+    }
+
+    private void checkAndAdvanceRound(Game game) {
+        List<GamePlayer> gps = gamePlayerMapper.selectList(new LambdaQueryWrapper<GamePlayer>()
+                .eq(GamePlayer::getGameId, game.getId()));
+
+        List<GamePlayer> nonFolded = gps.stream()
+                .filter(gp -> !gp.getIsFolded())
+                .collect(Collectors.toList());
+
+        if (nonFolded.isEmpty()) {
+            log.warn("⚠️ 所有玩家已弃牌但游戏未结束");
+            return;
+        }
+
+        // If only one non-folded player, they auto-win
+        if (nonFolded.size() == 1 && game.getPot() > 0) {
+            GamePlayer winner = nonFolded.get(0);
+            RoomPlayer winnerRp = roomPlayerMapper.selectById(winner.getRoomPlayerId());
+            if (winnerRp != null) {
+                int pot = game.getPot();
+                winnerRp.setBalance(winnerRp.getBalance() + pot);
+                roomPlayerMapper.updateById(winnerRp);
+                log.info("✅ 唯一留存玩家(gamePlayerId={}) 赢得底池 {}", winner.getId(), pot);
+                game.setPot(0);
+                logAction(game.getId(), winnerRp.getUserId(), ActionType.WIN, pot, game.getRoundNumber());
+            }
+            game.setIsFinished(true);
+            gameMapper.updateById(game);
+            return;
+        }
+
+        // No bets yet this round
+        if (game.getCurrentHighestBet() <= 0) {
+            log.info("ℹ️ 本轮尚未有下注，等待中...");
+            return;
+        }
+
+        // Check all non-folded have confirmed and their current bets equal the highest
+        boolean allConfirmed = nonFolded.stream().allMatch(GamePlayer::getIsBetConfirmed);
+        boolean allMatchHighest = nonFolded.stream()
+                .allMatch(gp -> gp.getCurrentRoundBet() == game.getCurrentHighestBet());
+
+        if (!allConfirmed) {
+            log.info("ℹ️ 等待所有玩家确认下注...");
+            return;
+        }
+        if (!allMatchHighest) {
+            log.info("ℹ️ 玩家下注金额未一致，等待回应加注...");
+            return;
+        }
+
+        // All matched and confirmed! Advance to next round
+        log.info("✅ 第 {} 轮下注完成，所有玩家下注金额一致 ({})，进入第 {} 轮",
+                game.getRoundNumber(), game.getCurrentHighestBet(), game.getRoundNumber() + 1);
+
+        game.setRoundNumber(game.getRoundNumber() + 1);
+        game.setCurrentHighestBet(0);
+        gameMapper.updateById(game);
+
+        for (GamePlayer gp : nonFolded) {
+            gp.setCurrentRoundBet(0);
+            gp.setPendingBet(0);
+            gp.setIsBetConfirmed(false);
+            gamePlayerMapper.updateById(gp);
+        }
     }
 
     @Transactional
@@ -407,8 +615,27 @@ public class PokerService {
             GameDTO gameDTO = new GameDTO();
             gameDTO.setId(game.getId());
             gameDTO.setRoundNumber(game.getRoundNumber());
+            gameDTO.setCurrentHighestBet(game.getCurrentHighestBet());
             gameDTO.setPot(game.getPot());
             gameDTO.setIsFinished(game.getIsFinished());
+
+            // Add action logs
+            List<ActionLog> logs = actionLogMapper.selectList(new LambdaQueryWrapper<ActionLog>()
+                    .eq(ActionLog::getGameId, game.getId())
+                    .orderByAsc(ActionLog::getId));
+            List<ActionLogDTO> logDTOs = logs.stream().map(al -> {
+                ActionLogDTO logDto = new ActionLogDTO();
+                logDto.setUserId(al.getUserId());
+                User u = userService.findById(al.getUserId());
+                logDto.setNickname(u != null ? u.getNickname() : "");
+                logDto.setActionType(al.getActionType());
+                logDto.setAmount(al.getAmount());
+                logDto.setRoundNumber(al.getRoundNumber());
+                logDto.setCreateTime(al.getCreateTime());
+                return logDto;
+            }).collect(Collectors.toList());
+            gameDTO.setActionLogs(logDTOs);
+
             dto.setGame(gameDTO);
         }
 
@@ -465,12 +692,13 @@ public class PokerService {
                 .eq(GamePlayer::getRoomPlayerId, roomPlayerId));
     }
 
-    private void logAction(Long gameId, Long userId, ActionType type, Integer amount) {
+    private void logAction(Long gameId, Long userId, ActionType type, Integer amount, Integer roundNumber) {
         ActionLog log = new ActionLog();
         log.setGameId(gameId);
         log.setUserId(userId);
         log.setActionType(type.name());
         log.setAmount(amount);
+        log.setRoundNumber(roundNumber);
         log.setCreateTime(LocalDateTime.now());
         actionLogMapper.insert(log);
     }

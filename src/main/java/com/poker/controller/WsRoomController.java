@@ -45,6 +45,13 @@ public class WsRoomController {
         }
     }
 
+    @MessageMapping("/room/{roomId}/call")
+    public void call(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.handleCall(roomId, principal.getName());
+        }
+    }
+
     @MessageMapping("/room/{roomId}/win")
     public void win(@DestinationVariable String roomId, Principal principal) {
         if (principal != null) {
@@ -63,6 +70,20 @@ public class WsRoomController {
     public void borrow(@DestinationVariable String roomId, BorrowRequest req, Principal principal) {
         if (principal != null) {
             pokerService.handleBorrow(roomId, principal.getName(), req);
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/undoBet")
+    public void undoBet(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.handleUndoBet(roomId, principal.getName());
+        }
+    }
+
+    @MessageMapping("/room/{roomId}/undoConfirm")
+    public void undoConfirm(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.handleUndoConfirm(roomId, principal.getName());
         }
     }
 }

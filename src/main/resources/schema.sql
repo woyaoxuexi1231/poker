@@ -52,6 +52,7 @@ CREATE TABLE `game` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `room_id` VARCHAR(6) NOT NULL,
   `round_number` INT NOT NULL DEFAULT 1,
+  `current_highest_bet` INT NOT NULL DEFAULT 0,
   `pot` INT NOT NULL DEFAULT 0,
   `is_finished` TINYINT(1) NOT NULL DEFAULT 0,
   `created_time` DATETIME NOT NULL,
@@ -77,6 +78,7 @@ CREATE TABLE `action_log` (
   `user_id` BIGINT NOT NULL,
   `action_type` VARCHAR(20) NOT NULL,
   `amount` INT NOT NULL DEFAULT 0,
+  `round_number` INT NOT NULL DEFAULT 0,
   `create_time` DATETIME NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
