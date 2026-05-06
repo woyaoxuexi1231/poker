@@ -5,6 +5,7 @@ import com.poker.dto.ActionLogDTO;
 import com.poker.dto.ActionRequest;
 import com.poker.dto.BorrowRequest;
 import com.poker.dto.GameDTO;
+import com.poker.dto.PlayerGameDTO;
 import com.poker.dto.PlayerDTO;
 import com.poker.dto.RoundBetDTO;
 import com.poker.dto.RoomDTO;
@@ -701,6 +702,39 @@ public class PokerService {
             dto.setCreateTime(al.getCreateTime());
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    public List<PlayerGameDTO> getPlayerGames(String roomId, Long userId) {
+        List<Game> games = gameMapper.selectList(new LambdaQueryWrapper<Game>()
+                .eq(Game::getRoomId, roomId)
+                .orderByDesc(Game::getId));
+
+        RoomPlayer rp = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
+                .eq(RoomPlayer::getRoomId, roomId)
+                .eq(RoomPlayer::getUserId, userId));
+        if (rp == null) return List.of();
+
+        List<PlayerGameDTO> result = new ArrayList<>();
+        for (Game game : games) {
+            if (!game.getIsFinished()) continue;
+
+            GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+            if (gp == null) continue;
+
+            ActionLog winLog = actionLogMapper.selectOne(new LambdaQueryWrapper<ActionLog>()
+                    .eq(ActionLog::getGameId, game.getId())
+                    .eq(ActionLog::getUserId, userId)
+                    .eq(ActionLog::getActionType, ActionType.WIN.name())
+                    .last("LIMIT 1"));
+
+            PlayerGameDTO dto = new PlayerGameDTO();
+            dto.setGameId(game.getId());
+            dto.setTotalBet(gp.getTotalBet());
+            dto.setWonAmount(winLog != null ? winLog.getAmount() : 0);
+            dto.setResult((winLog != null ? winLog.getAmount() : 0) - gp.getTotalBet());
+            result.add(dto);
+        }
+        return result;
     }
 
     public void broadcastRoom(String roomId) {

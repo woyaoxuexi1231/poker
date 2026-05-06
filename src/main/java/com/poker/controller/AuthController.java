@@ -57,6 +57,11 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/rankings")
+    public String rankings() {
+        return "rankings";
+    }
+
     @GetMapping("/")
     public String index(Model model, Authentication auth) {
         if (auth == null) return "redirect:/login";

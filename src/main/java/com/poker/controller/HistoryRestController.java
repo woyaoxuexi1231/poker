@@ -1,6 +1,7 @@
 package com.poker.controller;
 
 import com.poker.dto.ActionLogDTO;
+import com.poker.dto.PlayerGameDTO;
 import com.poker.service.PokerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,5 +24,10 @@ public class HistoryRestController {
                                           @RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "30") int size) {
         return pokerService.getActionHistory(roomId, page, size);
+    }
+
+    @GetMapping("/room/{roomId}/player/{userId}/games")
+    public List<PlayerGameDTO> getPlayerGames(@PathVariable String roomId, @PathVariable Long userId) {
+        return pokerService.getPlayerGames(roomId, userId);
     }
 }
