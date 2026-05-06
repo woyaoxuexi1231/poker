@@ -1,0 +1,60 @@
+# 编译输出
+**/target
+**/build/
+**/out/
+**/bin/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+
+# IDE
+**/.idea/
+**/*.iml
+**/.vscode/
+**/.settings/
+**/.project
+**/.classpath
+**/.factorypath
+
+# 日志
+**/logs/
+**/*.log
+**/npm-debug.log*
+**/yarn-error.log*
+
+# 测试报告
+**/test-output/
+**/coverage/
+**/target/surefire-reports/
+**/target/failsafe-reports/
+
+# 系统文件
+**/.DS_Store
+**/Thumbs.db
+**/*.bak
+**/~$*
+
+# 临时文件
+**/tmp/
+**/temp/
+**/*.pid
+**/*.zip
+**/*.tar.gz
+
+# 证书和密钥文件（不要提交到版本控制）
+**/*.p12
+**/*.jks
+**/*.keystore
+**/keystore.*
+**/certificate.*
+**/*.pem
+**/*.key
+
+# 内存转储
+**/heapdump.*
+**/*.hprof
+
+
+.qoder
+.trae
