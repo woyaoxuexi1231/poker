@@ -112,8 +112,10 @@ public class AuthController {
         if (roomDTO == null) {
             return "redirect:/";
         }
-        // Auto-join if not already in the room
-        pokerService.joinRoom(roomId, user.getId());
+        // Don't auto-join dissolved rooms
+        if (!"DISSOLVED".equals(roomDTO.getStatus())) {
+            pokerService.joinRoom(roomId, user.getId());
+        }
         model.addAttribute("roomId", roomId);
         model.addAttribute("userId", user.getId());
         model.addAttribute("nickname", user.getNickname());

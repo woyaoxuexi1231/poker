@@ -18,6 +18,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         CookieLocaleResolver clr = new CookieLocaleResolver();
         clr.setDefaultLocale(Locale.CHINESE);
         clr.setCookieName("lang");
+        clr.setCookiePath("/");
         return clr;
     }
 

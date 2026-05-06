@@ -12,4 +12,5 @@ public class Room {
     private String roomId;
     private Long createdBy;
     private LocalDateTime createdTime;
+    private String status;
 }

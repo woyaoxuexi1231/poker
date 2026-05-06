@@ -64,8 +64,8 @@
     <div class="glass-panel rounded-[2rem] p-8 w-full max-w-md relative z-10 card-enter">
         <div class="absolute top-6 right-8">
             <div class="flex bg-slate-100 p-0.5 rounded-lg">
-                <a th:href="@{/login(lang='zh')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</a>
-                <a th:href="@{/login(lang='en')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</a>
+                <button onclick="switchLang('zh')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</button>
+                <button onclick="switchLang('en')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</button>
             </div>
         </div>
 
@@ -121,5 +121,8 @@
             <a href="/register" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1" th:text="#{login.register.now}">立即注册</a>
         </div>
     </div>
+<script>
+function switchLang(lang) { document.cookie = "lang=" + lang + ";path=/;max-age=" + (86400 * 30); window.location.reload(); }
+</script>
 </body>
 </html>

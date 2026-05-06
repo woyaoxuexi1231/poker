@@ -169,8 +169,8 @@
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-slate-100 p-0.5 rounded-lg mr-1">
-                <a th:href="@{/room/{id}(id=${roomId}, lang='zh')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</a>
-                <a th:href="@{/room/{id}(id=${roomId}, lang='en')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</a>
+                <button onclick="switchLang('zh')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</button>
+                <button onclick="switchLang('en')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</button>
             </div>
             <button onclick="toggleDropdown()" class="w-10 h-10 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center text-slate-400 transition-all active:scale-90">
                 <i class="fas fa-bars-staggered"></i>
@@ -183,6 +183,7 @@
                     <div class="h-px bg-slate-100 my-1 mx-2"></div>
                     <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item"><i class="fas fa-person-walking-arrow-right text-slate-400"></i> <span th:text="#{nav.leave.temp}">暂离房间</span></button>
                     <button onclick="hideDropdown();exitRoomPermanent()" class="dropdown-item danger"><i class="fas fa-door-open"></i> <span th:text="#{nav.exit.room}">退出房间</span></button>
+                    <button id="dissolve-room-btn" onclick="hideDropdown();dissolveRoom()" class="dropdown-item danger" style="display:none;"><i class="fas fa-ban"></i> <span th:text="#{nav.dissolve.room}">解散房间</span></button>
                     <div class="h-px bg-slate-100 my-1 mx-2"></div>
                     <a href="/logout" class="dropdown-item text-rose-500"><i class="fas fa-power-off"></i> <span th:text="#{nav.logout}">退出登录</span></a>
                 </div>
@@ -483,7 +484,10 @@
             loading: /*[[#{modal.stats.loading}]]*/ 'Loading...',
             noRecord: /*[[#{modal.stats.no.record}]]*/ 'No records',
             historyPage: /*[[#{modal.history.page('{0}')}]]*/ 'Page {0}',
-            selectTarget: /*[[#{modal.transfer.target}]]*/ 'Select Target'
+            selectTarget: /*[[#{modal.transfer.target}]]*/ 'Select Target',
+            confirmDissolve: /*[[#{toast.confirm.dissolve}]]*/ 'Are you sure you want to dissolve this room?',
+            roomDissolved: /*[[#{room.dissolved}]]*/ 'Room Dissolved',
+            roomDissolvedDesc: /*[[#{room.dissolved.desc}]]*/ 'This room has been closed by the owner'
         };
 
         let stompClient = null;
@@ -562,6 +566,26 @@
             } else { gameInfo.style.display = 'none'; }
 
             myPlayer = (roomData.players || []).find(p => p.userId === myUserId);
+            
+            // Dissolved room
+            const dissolveBtn = document.getElementById('dissolve-room-btn');
+            if (dissolveBtn) {
+                dissolveBtn.style.display = (roomData.createdBy === myUserId) ? '' : 'none';
+            }
+            
+            if (roomData.status === 'DISSOLVED') {
+                gameInfo.style.display = 'none';
+                actionBar.style.display = 'none';
+                updateBodyPadding(0);
+                container.innerHTML = `
+                    <div class="glass-card rounded-2xl p-8 text-center">
+                        <div class="text-5xl mb-4">🏁</div>
+                        <div class="text-xl font-black text-slate-800 mb-2">${i18n.roomDissolved}</div>
+                        <p class="text-sm font-bold text-slate-400 mb-4">${i18n.roomDissolvedDesc}</p>
+                        <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-[#3b82f6] shadow-md"><i class="fas fa-arrow-left"></i> Back</a>
+                    </div>`;
+                return;
+            }
 
             transferSelect.innerHTML = `<option value="">${i18n.selectTarget}</option>`;
             if (roomData.players) {
@@ -705,6 +729,17 @@
             }
         }
         function tempLeaveRoom() { window.location.href = '/'; }
+
+        function dissolveRoom() {
+            if (confirm(i18n.confirmDissolve)) {
+                stompClient.send("/app/room/" + roomId + "/dissolve", {}, {});
+            }
+        }
+
+        function switchLang(lang) {
+            document.cookie = "lang=" + lang + ";path=/;max-age=" + (86400 * 30);
+            window.location.reload();
+        }
 
         // ── Modals ──
         function showTransferModal() { document.getElementById('transfer-modal').classList.add('show'); }

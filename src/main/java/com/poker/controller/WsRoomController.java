@@ -93,4 +93,10 @@ public class WsRoomController {
             pokerService.handleUndoConfirm(roomId, principal.getName());
         }
     }
+    @MessageMapping("/room/{roomId}/dissolve")
+    public void dissolve(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.dissolveRoom(roomId, principal.getName());
+        }
+    }
 }

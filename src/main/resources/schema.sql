@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `room`
     `room_id`      VARCHAR(6) NOT NULL,
     `created_by`   BIGINT     NOT NULL,
     `created_time` DATETIME   NOT NULL,
+    `status`       VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE-活跃 DISSOLVED-已解散',
     PRIMARY KEY (`room_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4

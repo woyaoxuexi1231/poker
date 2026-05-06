@@ -53,6 +53,7 @@ public class PokerService {
         room.setRoomId(roomId);
         room.setCreatedBy(userId);
         room.setCreatedTime(LocalDateTime.now());
+        room.setStatus("ACTIVE");
         roomMapper.insert(room);
 
         RoomPlayer rp = new RoomPlayer();
@@ -72,6 +73,7 @@ public class PokerService {
     public void joinRoom(String roomId, Long userId) {
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
+        if ("DISSOLVED".equals(room.getStatus())) throw new RuntimeException("房间已解散");
 
         RoomPlayer existing = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
                 .eq(RoomPlayer::getRoomId, roomId)
@@ -584,7 +586,9 @@ public class PokerService {
                         .eq(RoomPlayer::getUserId, userId))
                 .stream().map(RoomPlayer::getRoomId).collect(Collectors.toList());
 
-        return roomMapper.selectList(null).stream()
+        return roomMapper.selectList(new LambdaQueryWrapper<Room>()
+                        .ne(Room::getStatus, "DISSOLVED"))
+                .stream()
                 .map(room -> buildRoomDTO(room.getRoomId()))
                 .filter(Objects::nonNull)
                 .filter(r -> !myRoomIds.contains(r.getRoomId()))
@@ -602,6 +606,8 @@ public class PokerService {
         RoomDTO dto = new RoomDTO();
         dto.setRoomId(room.getRoomId());
         dto.setCreatedBy(room.getCreatedBy());
+
+        dto.setStatus(room.getStatus());
 
         User creator = userService.findById(room.getCreatedBy());
         dto.setCreatedByNickname(creator != null ? creator.getNickname() : "");
@@ -763,6 +769,32 @@ public class PokerService {
                     .eq(GamePlayer::getRoomPlayerId, rp.getId()));
         }
 
+        broadcastRoom(roomId);
+    }
+
+
+    @Transactional
+    public void dissolveRoom(String roomId, String username) {
+        User user = userService.findByUsername(username);
+        if (user == null) return;
+
+        Room room = roomMapper.selectById(roomId);
+        if (room == null) throw new RuntimeException("房间不存在");
+        if (!room.getCreatedBy().equals(user.getId())) throw new RuntimeException("只有房主才能解散房间");
+
+        room.setStatus("DISSOLVED");
+        roomMapper.updateById(room);
+
+        // Mark all active players as inactive
+        List<RoomPlayer> activePlayers = roomPlayerMapper.selectList(new LambdaQueryWrapper<RoomPlayer>()
+                .eq(RoomPlayer::getRoomId, roomId)
+                .eq(RoomPlayer::getIsActive, true));
+        for (RoomPlayer rp : activePlayers) {
+            rp.setIsActive(false);
+            roomPlayerMapper.updateById(rp);
+        }
+
+        log.info("✅ 房主 {} 解散了房间 {}", user.getUsername(), roomId);
         broadcastRoom(roomId);
     }
 

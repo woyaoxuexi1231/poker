@@ -9,6 +9,7 @@ public class RoomDTO {
     private Long createdBy;
     private String createdByNickname;
     private Integer playerCount;
+    private String status;
     private GameDTO game;
     private List<PlayerDTO> players;
 }

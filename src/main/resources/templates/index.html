@@ -122,8 +122,8 @@
         </div>
         <div class="flex items-center gap-2">
             <div class="flex bg-slate-100 p-0.5 rounded-lg mr-1">
-                <a th:href="@{/(lang='zh')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</a>
-                <a th:href="@{/(lang='en')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</a>
+                <button onclick="switchLang('zh')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</button>
+                <button onclick="switchLang('en')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</button>
             </div>
             <a href="/logout" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
                 <i class="fas fa-power-off"></i>
@@ -318,5 +318,8 @@
         function closeModal() { document.getElementById('ranking-modal').classList.remove('show'); }
     </script>
 
+<script>
+function switchLang(lang) { document.cookie = "lang=" + lang + ";path=/;max-age=" + (86400 * 30); window.location.reload(); }
+</script>
 </body>
 </html>
