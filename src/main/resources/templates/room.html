@@ -136,11 +136,15 @@
         .dropdown-item.danger { color: #f43f5e; }
 
         /* ── Ranking Modal Specific ── */
-        .rank-card { background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.03); border-radius: 16px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+        .rank-card { background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.03); border-radius: 16px; padding: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
         .rank-num { width: 24px; height: 24px; border-radius: 8px; background: #3b82f6; color: white; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rank-info { display: flex; flex-direction: column; min-width: 80px; }
         .rank-name { font-size: 13px; font-weight: 800; color: #1e293b; }
         .rank-desc { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
-        .rank-cards { font-size: 14px; font-weight: 900; letter-spacing: 1px; color: #334155; margin-left: auto; }
+        .rank-cards { font-size: 14px; font-weight: 900; letter-spacing: 1px; color: #334155; margin-left: auto; white-space: nowrap; }
+        @media (max-width: 400px) {
+            .rank-cards { margin-left: 36px; margin-top: -4px; width: 100%; }
+        }
 
         /* ── Animations ── */
         .num-pop { animation: numPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -177,7 +181,10 @@
                     <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> <span th:text="#{modal.borrow.title}">借贷中心</span></button>
                     <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-slate-400"></i> <span th:text="#{modal.history.title}">操作历史</span></button>
                     <div class="h-px bg-slate-100 my-1 mx-2"></div>
-                    <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item danger"><i class="fas fa-sign-out-alt"></i> <span th:text="#{nav.logout}">暂离房间</span></button>
+                    <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item"><i class="fas fa-person-walking-arrow-right text-slate-400"></i> <span th:text="#{nav.leave.temp}">暂离房间</span></button>
+                    <button onclick="hideDropdown();exitRoomPermanent()" class="dropdown-item danger"><i class="fas fa-door-open"></i> <span th:text="#{nav.exit.room}">退出房间</span></button>
+                    <div class="h-px bg-slate-100 my-1 mx-2"></div>
+                    <a href="/logout" class="dropdown-item text-rose-500"><i class="fas fa-power-off"></i> <span th:text="#{nav.logout}">退出登录</span></a>
                 </div>
             </div>
         </div>
@@ -360,7 +367,7 @@
             <div class="flex-1 overflow-y-auto space-y-2 pr-1">
                 <div class="rank-card">
                     <div class="rank-num">1</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">皇家同花顺</div>
                         <div class="rank-desc">Royal Flush</div>
                     </div>
@@ -368,7 +375,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">2</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">同花顺</div>
                         <div class="rank-desc">Straight Flush</div>
                     </div>
@@ -376,7 +383,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">3</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">四条</div>
                         <div class="rank-desc">Four of a Kind</div>
                     </div>
@@ -384,7 +391,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">4</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">葫芦</div>
                         <div class="rank-desc">Full House</div>
                     </div>
@@ -392,7 +399,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">5</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">同花</div>
                         <div class="rank-desc">Flush</div>
                     </div>
@@ -400,7 +407,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">6</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">顺子</div>
                         <div class="rank-desc">Straight</div>
                     </div>
@@ -408,7 +415,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">7</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">三条</div>
                         <div class="rank-desc">Three of a Kind</div>
                     </div>
@@ -416,7 +423,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">8</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">两对</div>
                         <div class="rank-desc">Two Pair</div>
                     </div>
@@ -424,7 +431,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">9</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">一对</div>
                         <div class="rank-desc">One Pair</div>
                     </div>
@@ -432,7 +439,7 @@
                 </div>
                 <div class="rank-card">
                     <div class="rank-num">10</div>
-                    <div>
+                    <div class="rank-info">
                         <div class="rank-name">高牌</div>
                         <div class="rank-desc">High Card</div>
                     </div>
@@ -471,6 +478,8 @@
             confirmFold: /*[[#{toast.confirm.fold}]]*/ 'Are you sure you want to fold?',
             confirmWin: /*[[#{toast.confirm.win('{0}')}]]*/ 'Are you sure?',
             confirmUndo: /*[[#{toast.confirm.undo}]]*/ 'Are you sure?',
+            exitCondition: /*[[#{room.exit.condition('{0}', '{1}')}]]*/ 'Chips must equal {1}',
+            exitSuccess: /*[[#{room.exit.success}]]*/ 'Exited successfully',
             loading: /*[[#{modal.stats.loading}]]*/ 'Loading...',
             noRecord: /*[[#{modal.stats.no.record}]]*/ 'No records',
             historyPage: /*[[#{modal.history.page('{0}')}]]*/ 'Page {0}',
@@ -682,6 +691,18 @@
         function undoConfirmAction() {
             if (!confirm(i18n.confirmUndo)) return;
             stompClient.send("/app/room/" + roomId + "/undoConfirm", {}, {});
+        }
+        function exitRoomPermanent() {
+            if (!myPlayer) return;
+            const totalPrincipal = 200 + (myPlayer.borrowedTotal || 0);
+            if (myPlayer.balance !== totalPrincipal) {
+                showToast(i18n.exitCondition.replace('{0}', myPlayer.borrowedTotal || 0).replace('{1}', totalPrincipal), 'error');
+                return;
+            }
+            if (confirm(i18n.exitSuccess + "?")) {
+                stompClient.send("/app/room/" + roomId + "/exit", {}, {});
+                setTimeout(() => window.location.href = '/', 500);
+            }
         }
         function tempLeaveRoom() { window.location.href = '/'; }
 

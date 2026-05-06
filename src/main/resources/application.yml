@@ -16,6 +16,9 @@ spring:
   thymeleaf:
     cache: false
     mode: HTML
+  messages:
+    basename: messages
+    encoding: UTF-8
 
 mybatis-plus:
   configuration:

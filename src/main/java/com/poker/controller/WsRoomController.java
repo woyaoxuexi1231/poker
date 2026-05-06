@@ -52,6 +52,13 @@ public class WsRoomController {
         }
     }
 
+    @MessageMapping("/room/{roomId}/exit")
+    public void exitRoom(@DestinationVariable String roomId, Principal principal) {
+        if (principal != null) {
+            pokerService.leaveRoomPermanent(roomId, principal.getName());
+        }
+    }
+
     @MessageMapping("/room/{roomId}/win")
     public void win(@DestinationVariable String roomId, Principal principal) {
         if (principal != null) {

@@ -737,6 +737,35 @@ public class PokerService {
         return result;
     }
 
+    @Transactional
+    public void leaveRoomPermanent(String roomId, String username) {
+        User user = userService.findByUsername(username);
+        if (user == null) return;
+
+        RoomPlayer rp = getRoomPlayer(roomId, user.getId());
+        if (rp == null) return;
+
+        // Check chips condition
+        int totalPrincipal = 200 + rp.getBorrowedTotal();
+        if (rp.getBalance() != totalPrincipal) {
+            throw new RuntimeException("请先确保筹码等于本金（初始200 + 借贷" + rp.getBorrowedTotal() + " = " + totalPrincipal + "）");
+        }
+
+        // Set inactive
+        rp.setIsActive(false);
+        roomPlayerMapper.updateById(rp);
+
+        // Remove from current game if any
+        Game game = getCurrentGame(roomId);
+        if (game != null && !game.getIsFinished()) {
+            gamePlayerMapper.delete(new LambdaQueryWrapper<GamePlayer>()
+                    .eq(GamePlayer::getGameId, game.getId())
+                    .eq(GamePlayer::getRoomPlayerId, rp.getId()));
+        }
+
+        broadcastRoom(roomId);
+    }
+
     public void broadcastRoom(String roomId) {
         RoomDTO dto = getRoomData(roomId);
         if (dto != null) {
