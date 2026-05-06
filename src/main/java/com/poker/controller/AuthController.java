@@ -1,5 +1,6 @@
 package com.poker.controller;
 
+import com.poker.util.AvatarPreset;
 import com.poker.dto.RoomDTO;
 import com.poker.entity.User;
 import com.poker.service.PokerService;
@@ -30,8 +31,9 @@ public class AuthController {
         return "login";
     }
 
-    @GetMapping("/register")
-    public String register() {
+@GetMapping("/register")
+    public String register(Model model) {
+        model.addAttribute("avatars", AvatarPreset.AVATARS);
         return "register";
     }
 
@@ -39,13 +41,14 @@ public class AuthController {
     public String doRegister(@RequestParam String username,
                              @RequestParam String password,
                              @RequestParam String nickname,
+                             @RequestParam(defaultValue = "") String avatar,
                              RedirectAttributes redirectAttributes) {
         try {
             if (userService.findByUsername(username) != null) {
                 redirectAttributes.addFlashAttribute("error", "用户名已存在");
                 return "redirect:/register";
             }
-            userService.register(username, passwordEncoder.encode(password), nickname);
+            userService.register(username, passwordEncoder.encode(password), nickname, avatar);
             redirectAttributes.addFlashAttribute("success", "注册成功，请登录");
             return "redirect:/login";
         } catch (Exception e) {
@@ -63,6 +66,7 @@ public class AuthController {
         List<RoomDTO> myRooms = pokerService.getMyRooms(user.getId());
         List<RoomDTO> availableRooms = pokerService.getAvailableRooms(user.getId());
 
+        model.addAttribute("avatar", user.getAvatar());
         model.addAttribute("nickname", user.getNickname());
         model.addAttribute("userId", user.getId());
         model.addAttribute("myRooms", myRooms);
@@ -108,6 +112,7 @@ public class AuthController {
         model.addAttribute("roomId", roomId);
         model.addAttribute("userId", user.getId());
         model.addAttribute("nickname", user.getNickname());
+        model.addAttribute("avatar", user.getAvatar());
         return "room";
     }
 }

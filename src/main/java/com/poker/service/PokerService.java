@@ -6,6 +6,7 @@ import com.poker.dto.ActionRequest;
 import com.poker.dto.BorrowRequest;
 import com.poker.dto.GameDTO;
 import com.poker.dto.PlayerDTO;
+import com.poker.dto.RoundBetDTO;
 import com.poker.dto.RoomDTO;
 import com.poker.dto.TransferRequest;
 import com.poker.entity.*;
@@ -156,7 +157,6 @@ public class PokerService {
         gp.setPendingBet(gp.getPendingBet() + amount);
         gamePlayerMapper.updateById(gp);
 
-        logAction(game.getId(), user.getId(), ActionType.BET, amount, game.getRoundNumber());
         broadcastRoom(roomId);
     }
 
@@ -391,7 +391,6 @@ public class PokerService {
         gamePlayerMapper.updateById(gp);
 
         log.info("✅ 玩家 {} 清空待确认下注 {}", user.getUsername(), cleared);
-        logAction(game.getId(), user.getId(), ActionType.CLEAR_PENDING, cleared, game.getRoundNumber());
         broadcastRoom(roomId);
     }
 
@@ -619,33 +618,33 @@ public class PokerService {
             gameDTO.setPot(game.getPot());
             gameDTO.setIsFinished(game.getIsFinished());
 
-            // Add action logs
-            List<ActionLog> logs = actionLogMapper.selectList(new LambdaQueryWrapper<ActionLog>()
-                    .eq(ActionLog::getGameId, game.getId())
-                    .orderByAsc(ActionLog::getId));
-            List<ActionLogDTO> logDTOs = logs.stream().map(al -> {
-                ActionLogDTO logDto = new ActionLogDTO();
-                logDto.setUserId(al.getUserId());
-                User u = userService.findById(al.getUserId());
-                logDto.setNickname(u != null ? u.getNickname() : "");
-                logDto.setActionType(al.getActionType());
-                logDto.setAmount(al.getAmount());
-                logDto.setRoundNumber(al.getRoundNumber());
-                logDto.setCreateTime(al.getCreateTime());
-                return logDto;
-            }).collect(Collectors.toList());
-            gameDTO.setActionLogs(logDTOs);
-
             dto.setGame(gameDTO);
         }
 
         List<PlayerDTO> playerDTOs = new ArrayList<>();
+
+        // Pre-compute per-round bets for all players in current game
+        Map<Long, Map<Integer, Integer>> roundBetMap = new HashMap<>();
+        if (game != null) {
+            List<ActionLog> gameLogs = actionLogMapper.selectList(new LambdaQueryWrapper<ActionLog>()
+                    .eq(ActionLog::getGameId, game.getId())
+                    .in(ActionLog::getActionType, "CONFIRM_BET", "CALL", "RAISE")
+                    .orderByAsc(ActionLog::getRoundNumber));
+            for (ActionLog al : gameLogs) {
+                roundBetMap.computeIfAbsent(al.getUserId(), k -> new HashMap<>());
+                Map<Integer, Integer> rounds = roundBetMap.get(al.getUserId());
+                int rn = al.getRoundNumber();
+                rounds.put(rn, rounds.getOrDefault(rn, 0) + al.getAmount());
+            }
+        }
+
         for (RoomPlayer rp : roomPlayers) {
             PlayerDTO pDto = new PlayerDTO();
             pDto.setId(rp.getId());
             pDto.setUserId(rp.getUserId());
             User u = userService.findById(rp.getUserId());
             pDto.setNickname(u != null ? u.getNickname() : "");
+            pDto.setAvatar(u != null ? u.getAvatar() : "🦁");
             pDto.setBalance(rp.getBalance());
             pDto.setBorrowedTotal(rp.getBorrowedTotal());
             pDto.setIsActive(rp.getIsActive());
@@ -658,12 +657,50 @@ public class PokerService {
                     pDto.setTotalBet(gp.getTotalBet());
                     pDto.setIsFolded(gp.getIsFolded());
                     pDto.setIsBetConfirmed(gp.getIsBetConfirmed());
+
+                    // Per-round bets
+                    Map<Integer, Integer> userRounds = roundBetMap.get(rp.getUserId());
+                    if (userRounds != null) {
+                        List<RoundBetDTO> rbs = userRounds.entrySet().stream()
+                                .map(e -> { RoundBetDTO rb = new RoundBetDTO(); rb.setRoundNumber(e.getKey()); rb.setAmount(e.getValue()); return rb; })
+                                .sorted(Comparator.comparing(RoundBetDTO::getRoundNumber))
+                                .collect(Collectors.toList());
+                        pDto.setRoundBets(rbs);
+                    }
                 }
             }
             playerDTOs.add(pDto);
         }
         dto.setPlayers(playerDTOs);
         return dto;
+    }
+
+    public List<ActionLogDTO> getActionHistory(String roomId, int page, int size) {
+        // Get all game IDs for this room
+        List<Game> games = gameMapper.selectList(new LambdaQueryWrapper<Game>()
+                .eq(Game::getRoomId, roomId)
+                .orderByDesc(Game::getId));
+        if (games.isEmpty()) return List.of();
+
+        List<Long> gameIds = games.stream().map(Game::getId).collect(Collectors.toList());
+        int offset = (page - 1) * size;
+
+        List<ActionLog> logs = actionLogMapper.selectList(new LambdaQueryWrapper<ActionLog>()
+                .in(ActionLog::getGameId, gameIds)
+                .orderByDesc(ActionLog::getId)
+                .last("LIMIT " + size + " OFFSET " + offset));
+
+        return logs.stream().map(al -> {
+            ActionLogDTO dto = new ActionLogDTO();
+            dto.setUserId(al.getUserId());
+            User u = userService.findById(al.getUserId());
+            dto.setNickname(u != null ? u.getNickname() : "");
+            dto.setActionType(al.getActionType());
+            dto.setAmount(al.getAmount());
+            dto.setRoundNumber(al.getRoundNumber());
+            dto.setCreateTime(al.getCreateTime());
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     public void broadcastRoom(String roomId) {

@@ -1,6 +1,7 @@
 package com.poker.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.poker.util.AvatarPreset;
 import com.poker.entity.User;
 import com.poker.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -40,11 +41,12 @@ public class UserService implements UserDetailsService {
         return userMapper.selectById(id);
     }
 
-    public void register(String username, String password, String nickname) {
+    public void register(String username, String password, String nickname, String avatar) {
         User user = new User();
         user.setUsername(username);
         user.setPassword(password);
         user.setNickname(nickname);
+        user.setAvatar(avatar != null && !avatar.isEmpty() ? avatar : AvatarPreset.random());
         user.setCreatedTime(java.time.LocalDateTime.now());
         userMapper.insert(user);
     }

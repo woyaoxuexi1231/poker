@@ -100,8 +100,8 @@
     <div class="glass-strong sticky top-3 z-40 rounded-2xl px-5 py-3 mb-6 flex justify-between items-center">
         <div>
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center text-sm font-bold">
-                    <i class="fas fa-diamond"></i>
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-lg" style="background:linear-gradient(135deg,#10b981,#059669);">
+                    <span th:text="${avatar != null ? avatar : '🦁'}" style="line-height:1;"></span>
                 </div>
                 <div>
                     <h1 class="text-lg font-black text-gray-800">德扑计分器</h1>

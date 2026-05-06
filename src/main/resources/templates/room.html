@@ -252,6 +252,7 @@
             <div class="dropdown-content py-1">
                 <button onclick="hideDropdown();showTransferModal()" class="dropdown-item"><i class="fas fa-exchange-alt text-blue-500"></i> 转移筹码</button>
                 <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> 借贷中心</button>
+                <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-gray-500"></i> 操作历史</button>
                 <div class="dropdown-divider"></div>
                 <button onclick="hideDropdown();leaveRoom()" class="dropdown-item"><i class="fas fa-sign-out-alt text-gray-500"></i> 离开房间</button>
             </div>
@@ -284,15 +285,6 @@
 
         <!-- Players List -->
         <div id="players-container" class="space-y-2.5"></div>
-
-        <!-- History Section -->
-        <div id="history-section" class="glass rounded-2xl p-4" style="display:none;">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-bold text-gray-700"><i class="fas fa-history mr-1.5 text-gray-400"></i>操作历史</h3>
-                <span class="text-[10px] text-gray-400" id="history-count">0 条</span>
-            </div>
-            <div id="history-list" class="max-h-48 overflow-y-auto space-y-0.5 text-xs"></div>
-        </div>
     </div>
 
     <!-- Fixed Bottom Action Bar -->
@@ -381,14 +373,35 @@
         </div>
     </div>
 
+    <!-- History Modal -->
+    <div id="history-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('history-modal')">
+        <div class="modal-card" style="max-width:400px;max-height:80vh;display:flex;flex-direction:column;">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-black text-gray-800 flex items-center gap-2"><i class="fas fa-history text-gray-400 text-sm"></i> 操作历史</h2>
+                <button onclick="closeModal('history-modal')" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div id="history-list-container" class="flex-1 overflow-y-auto text-xs space-y-0.5 min-h-0" style="max-height:50vh;">
+                <div class="text-gray-400 text-center py-8">加载中...</div>
+            </div>
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                <button id="history-prev" onclick="loadHistory(currentHistoryPage - 1)" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-50 text-gray-500 hover:text-emerald-600 disabled:opacity-30">上一页</button>
+                <span class="text-xs text-gray-400" id="history-page-info">第 1 页</span>
+                <button id="history-next" onclick="loadHistory(currentHistoryPage + 1)" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-50 text-gray-500 hover:text-emerald-600">下一页</button>
+            </div>
+        </div>
+    </div>
+
     <script th:inline="javascript">
         const roomId = /*[[${roomId}]]*/ '000000';
         const myUserId = /*[[${userId}]]*/ 0;
+        const myAvatar = /*[[${avatar}]]*/ '🦁';
         let stompClient = null;
         let roomData = null;
         let myPlayer = null;
         const avatarColors = ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
-        const actionLabels = { 'BET':'下注','CONFIRM_BET':'跟注','CALL':'跟注','RAISE':'加注','FOLD':'弃牌','WIN':'赢池','CLEAR_PENDING':'清空','UNDO_CONFIRM':'撤回' };
+        const actionLabels = { 'CONFIRM_BET':'跟注','CALL':'跟注','RAISE':'加注','FOLD':'弃牌','WIN':'赢池','UNDO_CONFIRM':'撤回' };
 
         // ── Toast ──
         function showToast(message, type = 'success') {
@@ -533,18 +546,22 @@
                         if (player.pendingBet > 0) {
                             betHtml += `<span class="text-[11px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded">待确认 +${player.pendingBet}</span> `;
                         }
-                        if (player.currentRoundBet > 0) {
+                        if (player.roundBets && player.roundBets.length > 0) {
+                            player.roundBets.forEach(rb => {
+                                betHtml += `<span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">第${rb.roundNumber}轮 +${rb.amount}</span> `;
+                            });
+                        } else if (player.currentRoundBet > 0) {
                             betHtml += `<span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">本轮 +${player.currentRoundBet}</span> `;
                         }
                         if (player.totalBet > 0) {
-                            betHtml += `<span class="text-[11px] font-bold text-gray-500">累计 ${player.totalBet}</span>`;
+                            betHtml += `<span class="text-[11px] font-bold text-gray-500">本局 ${player.totalBet}</span>`;
                         }
                     }
 
                     card.className = `glass rounded-2xl p-4 player-card ${isMe ? 'is-me' : ''} ${isFolded ? 'folded' : ''}`;
                     card.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <div class="avatar-placeholder" style="background:${color};">${player.nickname.charAt(0).toUpperCase()}</div>
+                            <div class="avatar-placeholder" style="background:${color};">${player.avatar || player.nickname.charAt(0).toUpperCase()}</div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold text-gray-800 text-sm truncate">${player.nickname}</span>
@@ -553,7 +570,7 @@
                                 </div>
                                 <div class="flex items-center gap-2 mt-0.5">
                                     <span class="text-sm font-black" style="color:${isMe ? '#3b82f6' : '#059669'};">${player.balance}</span>
-                                    ${player.borrowedTotal > 0 ? `<span class="text-[10px] text-amber-500 font-semibold">(欠 ${player.borrowedTotal})</span>` : ''}
+                                    ${player.borrowedTotal > 0 ? `<span class="text-[10px] text-amber-500 font-semibold">(借 ${player.borrowedTotal})</span>` : ''}
                                 </div>
                                 ${betHtml ? '<div class="flex items-center gap-1 mt-1 flex-wrap">' + betHtml + '</div>' : ''}
                             </div>
@@ -561,15 +578,6 @@
                     `;
                     container.appendChild(card);
                 });
-            }
-
-            // Render history
-            const historySection = document.getElementById('history-section');
-            if (roomData.game && roomData.game.actionLogs) {
-                historySection.style.display = 'block';
-                renderHistory(roomData.game.actionLogs);
-            } else {
-                historySection.style.display = 'none';
             }
         }
 
@@ -644,28 +652,47 @@
             window.location.href = '/';
         }
 
-        function renderHistory(logs) {
-            const container = document.getElementById('history-list');
-            const countEl = document.getElementById('history-count');
-            if (!logs || logs.length === 0) {
-                container.innerHTML = '<div class="text-gray-400 text-center py-3">暂无操作记录</div>';
-                countEl.innerText = '0 条';
-                return;
-            }
-            countEl.innerText = logs.length + ' 条';
-            let html = '';
-            let currentRound = 0;
-            logs.forEach(log => {
-                if (log.roundNumber && log.roundNumber !== currentRound) {
-                    currentRound = log.roundNumber;
-                    html += '<div class="text-[10px] font-bold text-gray-400 pt-2 pb-1 border-b border-gray-50">── 第 ' + currentRound + ' 轮 ──</div>';
-                }
-                const label = actionLabels[log.actionType] || log.actionType;
-                const amountText = log.amount > 0 ? ' +' + log.amount : '';
-                const time = log.createTime ? new Date(log.createTime).toLocaleTimeString() : '';
-                html += '<div class="flex justify-between items-center py-0.5"><span><span class="font-semibold text-gray-700">' + log.nickname + '</span> <span class="text-gray-500">' + label + amountText + '</span></span><span class="text-gray-400 text-[10px]">' + time + '</span></div>';
-            });
-            container.innerHTML = html;
+        let currentHistoryPage = 1;
+        const historyPageSize = 30;
+
+        function showHistoryModal() {
+            document.getElementById('history-modal').classList.add('show');
+            currentHistoryPage = 1;
+            loadHistory(1);
+        }
+
+        function loadHistory(page) {
+            const container = document.getElementById('history-list-container');
+            const prevBtn = document.getElementById('history-prev');
+            const nextBtn = document.getElementById('history-next');
+            const pageInfo = document.getElementById('history-page-info');
+
+            container.innerHTML = '<div class="text-gray-400 text-center py-8">加载中...</div>';
+            currentHistoryPage = page;
+            pageInfo.innerText = '第 ' + page + ' 页';
+            prevBtn.disabled = page <= 1;
+
+            fetch('/api/room/' + roomId + '/history?page=' + page + '&size=' + historyPageSize)
+                .then(res => res.json())
+                .then(logs => {
+                    if (!logs || logs.length === 0) {
+                        container.innerHTML = '<div class="text-gray-400 text-center py-8">暂无操作记录</div>';
+                        nextBtn.disabled = true;
+                        return;
+                    }
+                    nextBtn.disabled = logs.length < historyPageSize;
+                    let html = '';
+                    logs.forEach(log => {
+                        const label = actionLabels[log.actionType] || log.actionType;
+                        const amountText = log.amount > 0 ? ' +' + log.amount : '';
+                        const time = log.createTime ? new Date(log.createTime).toLocaleTimeString() : '';
+                        html += '<div class="flex justify-between items-center py-0.5"><span><span class="font-semibold text-gray-700">' + log.nickname + '</span> <span class="text-gray-500">' + label + amountText + '</span></span><span class="text-gray-400 text-[10px]">' + time + '</span></div>';
+                    });
+                    container.innerHTML = html;
+                })
+                .catch(() => {
+                    container.innerHTML = '<div class="text-red-400 text-center py-8">加载失败</div>';
+                });
         }
 
         // ── Modals ──

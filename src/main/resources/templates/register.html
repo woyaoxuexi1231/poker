@@ -73,6 +73,34 @@
             from { opacity: 0; transform: translateY(20px) scale(0.97); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .avatar-option {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            cursor: pointer;
+            border: 3px solid transparent;
+            background: rgba(255,255,255,0.5);
+            transition: all 0.2s ease;
+        }
+        .avatar-option:hover {
+            background: rgba(255,255,255,0.8);
+            transform: scale(1.05);
+        }
+        .avatar-option.selected {
+            border-color: #10b981;
+            background: rgba(16,185,129,0.1);
+            transform: scale(1.05);
+            box-shadow: 0 0 0 4px rgba(16,185,129,0.15);
+        }
     </style>
 </head>
 <body>
@@ -103,10 +131,37 @@
                 <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="far fa-smile text-gray-400 mr-1.5"></i>昵称</label>
                 <input type="text" name="nickname" required placeholder="房间内显示的昵称" class="input-glass w-full px-4 py-3 rounded-xl text-gray-800 placeholder:text-gray-400">
             </div>
+            <div>
+                <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="far fa-images text-gray-400 mr-1.5"></i>选择头像</label>
+                <div class="avatar-grid" id="avatar-grid">
+                    <div th:each="av : ${avatars}" class="avatar-option" th:data-avatar="${av}" th:text="${av}" onclick="selectAvatar(this)"></div>
+                </div>
+                <input type="hidden" name="avatar" id="selected-avatar" value="">
+                <button type="button" onclick="randomAvatar()" class="mt-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors">
+                    <i class="fas fa-dice mr-1"></i>随机分配
+                </button>
+            </div>
             <button type="submit" class="btn-primary w-full py-3.5 rounded-xl text-base">
                 <i class="fas fa-user-plus mr-2"></i>注册
             </button>
         </form>
+
+        <script>
+            function selectAvatar(el) {
+                document.querySelectorAll('.avatar-option').forEach(a => a.classList.remove('selected'));
+                el.classList.add('selected');
+                document.getElementById('selected-avatar').value = el.getAttribute('data-avatar');
+            }
+            function randomAvatar() {
+                const options = document.querySelectorAll('.avatar-option');
+                const idx = Math.floor(Math.random() * options.length);
+                selectAvatar(options[idx]);
+            }
+            // Random select on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                randomAvatar();
+            });
+        </script>
 
         <div class="mt-6 text-center">
             <span class="text-sm text-gray-400">已有账号？</span>
