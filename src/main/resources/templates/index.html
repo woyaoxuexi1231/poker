@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title th:text="#{app.name}">德扑计分器</title>
+    <title>德扑计分器</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -116,15 +116,11 @@
                 <span th:text="${avatar != null ? avatar : '🦁'}" class="text-xl"></span>
             </div>
             <div>
-                <h1 class="text-base font-extrabold text-slate-900 leading-none" th:text="#{app.name}">德扑计分器</h1>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="#{welcome.back(${nickname})}">Welcome back</span>
+                <h1 class="text-base font-extrabold text-slate-900 leading-none">德扑计分器</h1>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="'欢迎回来, ' + ${nickname}">欢迎回来</span>
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <div class="flex bg-slate-100 p-0.5 rounded-lg mr-1">
-                <button onclick="switchLang('zh')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</button>
-                <button onclick="switchLang('en')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</button>
-            </div>
             <a href="/logout" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
                 <i class="fas fa-power-off"></i>
             </a>
@@ -138,19 +134,17 @@
 
     <!-- Create/Join Room -->
     <section class="mb-8">
-        <div class="section-header" th:text="#{index.room.actions}">房间操作</div>
+        <div class="section-header">房间操作</div>
         <div class="grid grid-cols-1 gap-4">
             <div class="glass-panel rounded-2xl p-5">
                 <form action="/room/create" method="post" class="mb-4">
                     <button type="submit" class="btn-primary-glow w-full py-4 rounded-xl text-sm flex items-center justify-center gap-2">
-                        <i class="fas fa-plus-circle"></i><span th:text="#{index.create.room}">创建新房间</span>
+                        <i class="fas fa-plus-circle"></i><span>创建新房间</span>
                     </button>
                 </form>
                 <form action="/room/join" method="post" class="flex flex-col sm:flex-row gap-3">
-                    <input type="text" name="roomId" required pattern="[0-9]{6}" th:placeholder="#{index.enter.room.id}" class="input-glass w-full sm:flex-1 px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 text-center font-bold tracking-[0.2em] min-w-0">
-                    <button type="submit" class="btn-secondary-glass px-6 py-3.5 rounded-xl text-sm whitespace-nowrap shrink-0" th:text="#{index.join.room}">
-                        加入
-                    </button>
+                    <input type="text" name="roomId" required pattern="[0-9]{6}" placeholder="输入房间号" class="input-glass w-full sm:flex-1 px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 text-center font-bold tracking-[0.2em] min-w-0">
+                    <button type="submit" class="btn-secondary-glass px-6 py-3.5 rounded-xl text-sm whitespace-nowrap shrink-0">加入</button>
                 </form>
             </div>
         </div>
@@ -158,12 +152,12 @@
 
     <!-- My Rooms -->
     <section class="mb-8">
-        <div class="section-header" th:text="#{index.my.rooms}">我的房间</div>
+        <div class="section-header">我的房间</div>
         <div th:if="${#lists.isEmpty(myRooms)}" class="glass-panel rounded-2xl p-8 text-center">
             <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-dice text-slate-200 text-3xl"></i>
             </div>
-            <p class="text-sm text-slate-400 font-medium" th:text="#{index.no.active.rooms}">暂无活跃房间</p>
+            <p class="text-sm text-slate-400 font-medium">暂无活跃房间</p>
         </div>
         <div th:if="${!#lists.isEmpty(myRooms)}" class="space-y-3">
             <a th:each="room : ${myRooms}" th:href="@{'/room/' + ${room.roomId}}"
@@ -173,10 +167,10 @@
                         <i class="fas fa-door-open text-xl"></i>
                     </div>
                     <div>
-                        <div class="font-bold text-slate-900" th:text="#{room.id(${room.roomId})}">房间</div>
+                        <div class="font-bold text-slate-900" th:text="'房间 ' + ${room.roomId}">房间</div>
                         <div class="flex items-center gap-2 mt-0.5">
-                            <span class="text-[11px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" th:text="#{index.players(${room.playerCount})}">0 PLAYERS</span>
-                            <span th:if="${room.game != null and !room.game.isFinished}" class="text-[11px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded" th:text="#{index.in.game}">IN GAME</span>
+                            <span class="text-[11px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" th:text="${room.playerCount} + ' 人'">0 人</span>
+                            <span th:if="${room.game != null and !room.game.isFinished}" class="text-[11px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">游戏中</span>
                         </div>
                     </div>
                 </div>
@@ -189,10 +183,10 @@
 
     <!-- Available Rooms -->
     <section>
-        <div class="section-header" th:text="#{index.discover.rooms}">发现房间</div>
+        <div class="section-header">发现房间</div>
         <div th:if="${#lists.isEmpty(availableRooms)}" class="glass-panel rounded-2xl p-8 text-center text-slate-400">
             <i class="fas fa-search text-2xl mb-2 opacity-20"></i>
-            <p class="text-xs font-medium tracking-wide" th:text="#{index.no.public.rooms}">目前没有公开房间</p>
+            <p class="text-xs font-medium tracking-wide">目前没有公开房间</p>
         </div>
         <div th:if="${!#lists.isEmpty(availableRooms)}" class="space-y-3">
             <form th:each="room : ${availableRooms}" th:action="@{'/room/join'}" method="post">
@@ -203,11 +197,11 @@
                             <i class="fas fa-hashtag text-xl"></i>
                         </div>
                         <div>
-                            <div class="font-bold text-slate-900" th:text="#{room.id(${room.roomId})}">房间</div>
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="#{index.host(${room.createdByNickname})}">Host</div>
+                            <div class="font-bold text-slate-900" th:text="'房间 ' + ${room.roomId}">房间</div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="'房主: ' + ${room.createdByNickname}">房主</div>
                         </div>
                     </div>
-                    <div class="btn-primary-glow px-4 py-2 rounded-lg text-[11px] font-bold" th:text="#{index.join.room}">JOIN</div>
+                    <div class="btn-primary-glow px-4 py-2 rounded-lg text-[11px] font-bold">加入</div>
                 </button>
             </form>
         </div>
@@ -215,7 +209,7 @@
 
     <div class="fixed bottom-6 left-0 right-0 flex justify-center z-10">
         <button onclick="showRankingModal()" class="glass-panel px-6 py-3 rounded-full text-xs font-bold text-slate-600 hover:text-blue-600 hover:border-blue-200 transition-all flex items-center gap-2 shadow-lg shadow-slate-200/50">
-            <i class="fas fa-crown text-amber-400"></i> <span th:text="#{nav.rules}">牌型规则</span>
+            <i class="fas fa-crown text-amber-400"></i> 牌型规则
         </button>
     </div>
 
@@ -223,7 +217,7 @@
     <div id="ranking-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
         <div class="modal-card" style="max-height:85vh;display:flex;flex-direction:column;">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fas fa-crown text-amber-400 text-sm"></i> <span th:text="#{nav.rules}">牌型参考</span></h2>
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fas fa-crown text-amber-400 text-sm"></i> 牌型参考</h2>
                 <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
                     <i class="fas fa-times text-sm"></i>
                 </button>
@@ -317,9 +311,5 @@
         function showRankingModal() { document.getElementById('ranking-modal').classList.add('show'); }
         function closeModal() { document.getElementById('ranking-modal').classList.remove('show'); }
     </script>
-
-<script>
-function switchLang(lang) { document.cookie = "lang=" + lang + ";path=/;max-age=" + (86400 * 30); window.location.reload(); }
-</script>
 </body>
 </html>

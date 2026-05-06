@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title th:text="#{register.title}">注册 - 德州扑克计分器</title>
+    <title>注册 - 德扑计分器</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -90,19 +90,13 @@
 </head>
 <body>
     <div class="glass-panel rounded-[2rem] p-8 w-full max-w-md relative z-10 card-enter">
-        <div class="absolute top-6 right-8">
-            <div class="flex bg-slate-100 p-0.5 rounded-lg">
-                <button onclick="switchLang('zh')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</button>
-                <button onclick="switchLang('en')" class="text-[9px] font-black px-2 py-1 rounded-md transition-all cursor-pointer" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</button>
-            </div>
-        </div>
 
         <div class="text-center mb-10">
             <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl shadow-lg shadow-blue-500/20 mb-6">
                 <i class="fas fa-diamond"></i>
             </div>
-            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight" th:text="#{register.title}">创建账号</h1>
-            <p class="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]" th:text="#{register.tagline}">Join the high stakes</p>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">创建账号</h1>
+            <p class="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">Join the high stakes</p>
         </div>
 
         <div th:if="${error}" class="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-3">
@@ -112,22 +106,22 @@
 
         <form action="/register" method="post" class="space-y-5">
             <div>
-                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{login.username}">Username</label>
-                <input type="text" name="username" required th:placeholder="#{login.username}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">用户名</label>
+                <input type="text" name="username" required placeholder="用户名" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
-                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{login.password}">Password</label>
-                <input type="password" name="password" required th:placeholder="#{login.password}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">密码</label>
+                <input type="password" name="password" required placeholder="密码" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
-                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{register.nickname}">Nickname</label>
-                <input type="text" name="nickname" required th:placeholder="#{register.nickname}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">昵称</label>
+                <input type="text" name="nickname" required placeholder="昵称" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
                 <div class="flex items-center justify-between mb-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="#{register.choose.avatar}">Choose Avatar</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">选择头像</label>
                     <button type="button" onclick="randomAvatar()" class="text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
-                        <i class="fas fa-dice"></i> <span th:text="#{register.random}">RANDOM</span>
+                        <i class="fas fa-dice"></i> 随机
                     </button>
                 </div>
                 <div class="avatar-grid" id="avatar-grid">
@@ -136,13 +130,13 @@
                 <input type="hidden" name="avatar" id="selected-avatar" value="">
             </div>
             <button type="submit" class="btn-primary-glow w-full py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
-                <span th:text="#{register.btn}">注册账号</span> <i class="fas fa-user-plus text-xs"></i>
+                <span>注册账号</span> <i class="fas fa-user-plus text-xs"></i>
             </button>
         </form>
 
         <div class="mt-8 pt-8 border-t border-slate-100 text-center">
-            <span class="text-xs font-bold text-slate-400" th:text="#{register.has.account}">已有账号？</span>
-            <a href="/login" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1" th:text="#{register.login.now}">立即登录</a>
+            <span class="text-xs font-bold text-slate-400">已有账号？</span>
+            <a href="/login" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1">立即登录</a>
         </div>
     </div>
 
@@ -162,8 +156,6 @@
             randomAvatar();
         });
     </script>
-<script>
-function switchLang(lang) { document.cookie = "lang=" + lang + ";path=/;max-age=" + (86400 * 30); window.location.reload(); }
-</script>
+
 </body>
 </html>

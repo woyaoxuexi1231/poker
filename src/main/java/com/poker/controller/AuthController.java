@@ -3,7 +3,8 @@ package com.poker.controller;
 import com.poker.util.AvatarPreset;
 import com.poker.dto.RoomDTO;
 import com.poker.entity.User;
-import com.poker.service.PokerService;
+import com.poker.service.RoomService;
+import com.poker.service.RoomQueryService;
 import com.poker.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -22,7 +23,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final PokerService pokerService;
+    private final RoomService roomService;
+    private final RoomQueryService roomQueryService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
 
@@ -68,8 +70,8 @@ public class AuthController {
         User user = userService.findByUsername(auth.getName());
         if (user == null) return "redirect:/login";
 
-        List<RoomDTO> myRooms = pokerService.getMyRooms(user.getId());
-        List<RoomDTO> availableRooms = pokerService.getAvailableRooms(user.getId());
+        List<RoomDTO> myRooms = roomQueryService.getMyRooms(user.getId());
+        List<RoomDTO> availableRooms = roomQueryService.getAvailableRooms(user.getId());
 
         model.addAttribute("avatar", user.getAvatar());
         model.addAttribute("nickname", user.getNickname());
@@ -83,7 +85,7 @@ public class AuthController {
     public String createRoom(Authentication auth, RedirectAttributes redirectAttributes) {
         try {
             User user = userService.findByUsername(auth.getName());
-            String roomId = pokerService.createRoom(user.getId());
+            String roomId = roomService.createRoom(user.getId());
             return "redirect:/room/" + roomId;
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -97,7 +99,7 @@ public class AuthController {
                            RedirectAttributes redirectAttributes) {
         try {
             User user = userService.findByUsername(auth.getName());
-            pokerService.joinRoom(roomId, user.getId());
+            roomService.joinRoom(roomId, user.getId());
             return "redirect:/room/" + roomId;
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -108,13 +110,13 @@ public class AuthController {
     @GetMapping("/room/{roomId}")
     public String room(@PathVariable String roomId, Model model, Authentication auth) {
         User user = userService.findByUsername(auth.getName());
-        RoomDTO roomDTO = pokerService.getRoomData(roomId);
+        RoomDTO roomDTO = roomQueryService.getRoomData(roomId);
         if (roomDTO == null) {
             return "redirect:/";
         }
         // Don't auto-join dissolved rooms
         if (!"DISSOLVED".equals(roomDTO.getStatus())) {
-            pokerService.joinRoom(roomId, user.getId());
+            roomService.joinRoom(roomId, user.getId());
         }
         model.addAttribute("roomId", roomId);
         model.addAttribute("userId", user.getId());
