@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>房间 - 德州扑克计分器</title>
+    <title th:text="#{app.name}">房间 - 德州扑克计分器</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,272 +22,163 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             min-height: 100vh;
-            background: linear-gradient(180deg, #f2f5fa 0%, #e6ecf4 100%);
+            background: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(147, 51, 234, 0.05) 0px, transparent 50%);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            padding-bottom: 220px;
+            padding-bottom: 80px;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
 
         /* ── Glass ── */
-        .glass {
-            background: rgba(255,255,255,0.72);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255,255,255,0.5);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02);
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
         }
-        .glass-strong {
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border: 1px solid rgba(255,255,255,0.6);
-            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* ── Action Bar ── */
         .action-bar {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            background: rgba(255,255,255,0.82);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border-top: 1px solid rgba(255,255,255,0.6);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.6);
             padding: 1rem 1.25rem;
             padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.04);
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
             z-index: 50;
             max-width: 480px;
             margin: 0 auto;
-            left: 0; right: 0;
             border-radius: 24px 24px 0 0;
-            animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .action-bar.minimized { transform: translateY(calc(100% - 60px)); }
+        .action-toggle {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 24px; background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); z-index: 60;
         }
 
         /* ── iOS-style Buttons ── */
         .chip-btn {
-            flex: 1;
-            background: rgba(255,255,255,0.9);
-            border: 1px solid rgba(60,60,67,0.12);
-            color: #1c1c1e;
-            padding: 0.7rem 0.5rem;
-            border-radius: 14px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
-            cursor: pointer;
-            letter-spacing: -0.01em;
+            flex: 1; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(0, 0, 0, 0.05);
+            color: #475569; padding: 0.7rem 0.5rem; border-radius: 14px;
+            font-weight: 700; font-size: 0.8rem; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.02em;
         }
-        .chip-btn:hover { background: rgba(255,255,255,1); transform: translateY(-1px); }
-        .chip-btn:active { transform: scale(0.96); background: rgba(60,60,67,0.05); }
-
-        .chip-btn.primary {
-            background: #007AFF;
-            border-color: transparent;
-            color: white;
-            font-weight: 600;
-            font-size: 0.8rem;
-            box-shadow: 0 4px 12px rgba(0,122,255,0.25);
-        }
-        .chip-btn.primary:hover { background: #0066d6; }
-
-        .chip-btn.success {
-            background: #34c759;
-            border-color: transparent;
-            color: white;
-            font-weight: 600;
-            font-size: 0.8rem;
-            box-shadow: 0 4px 12px rgba(52,199,89,0.25);
-        }
-        .chip-btn.success:hover { background: #2db84e; }
-
-        .chip-btn.danger {
-            border-color: rgba(255,59,48,0.3);
-            color: #ff3b30;
-        }
-        .chip-btn.danger:hover { background: rgba(255,59,48,0.05); }
-
-        .chip-btn.ghost {
-            background: transparent;
-            border-color: transparent;
-            color: #007AFF;
-        }
-        .chip-btn.ghost:hover { background: rgba(0,122,255,0.06); }
+        .chip-btn:hover { background: rgba(255, 255, 255, 1); border-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .chip-btn:active { transform: scale(0.96); }
+        .chip-btn.primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+        .chip-btn.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+        .chip-btn.danger { background: rgba(244, 63, 94, 0.05); border-color: rgba(244, 63, 94, 0.1); color: #f43f5e; }
+        .chip-btn.danger:hover { background: #f43f5e; color: white; border-color: transparent; }
 
         /* ── Custom Bet Input ── */
         .custom-bet-wrap {
-            flex: 1.5;
-            display: flex;
-            gap: 4px;
-            background: rgba(255,255,255,0.8);
-            border: 1.5px solid rgba(60,60,67,0.12);
-            border-radius: 14px;
-            padding: 3px;
-            transition: all 0.2s;
+            flex: 1.5; display: flex; gap: 4px; background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 14px; padding: 4px; transition: all 0.2s;
         }
-        .custom-bet-wrap:focus-within {
-            border-color: #007AFF;
-            box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
-        }
-        .custom-bet-wrap input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: #1c1c1e;
-            outline: none;
-            min-width: 0;
-            padding: 0.2rem;
-        }
-        .custom-bet-wrap input::placeholder { color: #8e8e93; font-weight: 500; }
-        .custom-bet-wrap .chip-btn { background: #007AFF; color: white; border: none; }
+        .custom-bet-wrap:focus-within { border-color: #3b82f6; background: white; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .custom-bet-wrap input { flex: 1; background: transparent; border: none; text-align: center; font-weight: 700; font-size: 0.9rem; color: #1e293b; outline: none; min-width: 0; }
+        .custom-bet-wrap input::placeholder { color: #94a3b8; font-weight: 600; }
+        .custom-bet-wrap .chip-btn { padding: 0.4rem 0.8rem; }
 
         /* ── Player Card ── */
-        .player-card {
-            transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
-            cursor: pointer;
-        }
-        .player-card:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,0.08); }
-        .player-card:active { transform: scale(0.98); }
-        .player-card.is-me {
-            border-color: rgba(0,122,255,0.3);
-            box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
-        }
-        .player-card.folded {
-            opacity: 0.5;
-            filter: grayscale(80%);
-        }
-
-        .avatar-placeholder {
-            width: 44px; height: 44px;
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem;
-            flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
+        .player-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .player-card.is-me { border-color: rgba(59, 130, 246, 0.3); background: rgba(255, 255, 255, 0.9); box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1); }
+        .player-card.folded { opacity: 0.5; filter: grayscale(100%); transform: scale(0.98); }
+        .avatar-placeholder { width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); color: white; font-weight: 800; }
 
         /* ── Toast ── */
-        #toast-container {
-            position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
-            z-index: 1000; width: calc(100% - 2rem); max-width: 400px;
-            pointer-events: none; display: flex; flex-direction: column; gap: 0.5rem;
-        }
-        .toast {
-            pointer-events: auto;
-            padding: 0.85rem 1.2rem; border-radius: 14px; font-weight: 600; font-size: 0.85rem;
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            display: flex; align-items: center; gap: 0.6rem;
-            animation: toastIn 0.4s cubic-bezier(0.16,1,0.3,1);
-        }
+        #toast-container { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 1000; width: calc(100% - 2rem); max-width: 400px; pointer-events: none; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { pointer-events: auto; padding: 1rem 1.25rem; border-radius: 16px; font-weight: 700; font-size: 0.85rem; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08); display: flex; align-items: center; gap: 0.75rem; animation: toastIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
         .toast.out { animation: toastOut 0.3s ease-in forwards; }
-        @keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(30px); } }
-        .toast.success { background: rgba(209,250,229,0.92); border: 1px solid rgba(167,243,208,0.5); color: #065f46; }
-        .toast.error { background: rgba(254,226,226,0.92); border: 1px solid rgba(252,165,165,0.5); color: #991b1b; }
-        .toast.info { background: rgba(219,234,254,0.92); border: 1px solid rgba(191,219,254,0.5); color: #1e40af; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+        .toast.success { background: rgba(236, 253, 245, 0.9); border: 1px solid #a7f3d0; color: #065f46; }
+        .toast.error { background: rgba(255, 241, 242, 0.9); border: 1px solid #fecdd3; color: #9f1239; }
+        .toast.info { background: rgba(239, 246, 255, 0.9); border: 1px solid #bfdbfe; color: #1e40af; }
 
         /* ── Modal ── */
-        .modal-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            display: none; align-items: center; justify-content: center; z-index: 100; padding: 1.5rem;
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1.5rem; }
         .modal-overlay.show { display: flex; }
-        .modal-card {
-            background: rgba(255,255,255,0.9); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 1px solid rgba(255,255,255,0.6); border-radius: 28px; padding: 1.75rem;
-            width: 100%; max-width: 360px;
-            box-shadow: 0 24px 64px rgba(0,0,0,0.12);
-            animation: modalIn 0.35s cubic-bezier(0.16,1,0.3,1);
-        }
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.92) translateY(12px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .modal-btn {
-            padding: 0.85rem; border-radius: 14px; font-weight: 700; font-size: 0.9rem;
-            border: none; cursor: pointer; transition: all 0.2s;
-        }
-        .modal-btn:active { transform: scale(0.96); }
-        .modal-input {
-            width: 100%; background: rgba(255,255,255,0.6);
-            border: 1.5px solid rgba(60,60,67,0.12); border-radius: 14px;
-            padding: 0.85rem 1rem; font-size: 1.2rem; font-weight: 700;
-            color: #1c1c1e; outline: none; transition: all 0.2s; text-align: center;
-        }
-        .modal-input:focus { border-color: #007AFF; box-shadow: 0 0 0 4px rgba(0,122,255,0.12); }
-        .modal-select {
-            width: 100%; background: rgba(255,255,255,0.6);
-            border: 1.5px solid rgba(60,60,67,0.12); border-radius: 14px;
-            padding: 0.85rem 1rem; font-size: 0.95rem; font-weight: 600;
-            color: #1c1c1e; outline: none; cursor: pointer;
-        }
+        .modal-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 32px; padding: 1.75rem; width: 100%; max-width: 380px; box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.15); animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-btn { padding: 0.8rem 1.25rem; border-radius: 14px; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.2s; }
+        .modal-btn.primary { background: #3b82f6; color: white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .modal-btn.secondary { background: #f1f5f9; color: #475569; }
+        .modal-input { width: 100%; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 16px; padding: 0.8rem 1rem; font-size: 1.25rem; font-weight: 800; color: #1e293b; outline: none; transition: all 0.2s; text-align: center; }
+        .modal-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .modal-select { width: 100%; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 16px; padding: 0.8rem 1rem; font-size: 0.9rem; font-weight: 700; color: #1e293b; outline: none; cursor: pointer; }
 
         /* ── Dropdown ── */
-        .dropdown-content {
-            display: none;
-            position: absolute; right: 0; top: calc(100% + 6px);
-            min-width: 190px;
-            background: rgba(255,255,255,0.92); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 1px solid rgba(255,255,255,0.5); border-radius: 16px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.1); z-index: 60; overflow: hidden;
-        }
+        .dropdown-content { display: none; position: absolute; right: 0; top: calc(100% + 8px); min-width: 180px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 20px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08); z-index: 60; overflow: hidden; animation: dropdownIn 0.2s ease-out; }
+        @keyframes dropdownIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .dropdown.active .dropdown-content { display: block; }
-        .dropdown-item {
-            width: 100%; text-align: left; padding: 0.8rem 1rem;
-            font-size: 0.85rem; font-weight: 600; color: #1c1c1e;
-            background: transparent; border: none; cursor: pointer;
-            display: flex; align-items: center; gap: 0.5rem;
-        }
-        .dropdown-item:hover { background: rgba(60,60,67,0.04); }
-        .dropdown-item.danger { color: #ff3b30; }
-        .dropdown-divider { height: 1px; background: rgba(60,60,67,0.06); margin: 0.25rem 0; }
+        .dropdown-item { width: 100%; text-align: left; padding: 0.8rem 1.1rem; font-size: 0.8rem; font-weight: 700; color: #475569; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: all 0.2s; }
+        .dropdown-item:hover { background: rgba(59, 130, 246, 0.05); color: #3b82f6; }
+        .dropdown-item.danger { color: #f43f5e; }
+
+        /* ── Ranking Modal Specific ── */
+        .rank-card { background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.03); border-radius: 16px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+        .rank-num { width: 24px; height: 24px; border-radius: 8px; background: #3b82f6; color: white; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .rank-name { font-size: 13px; font-weight: 800; color: #1e293b; }
+        .rank-desc { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+        .rank-cards { font-size: 14px; font-weight: 900; letter-spacing: 1px; color: #334155; margin-left: auto; }
 
         /* ── Animations ── */
-        .num-pop { animation: numPop 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-        @keyframes numPop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        .pending-chip { animation: chipSlide 0.3s cubic-bezier(0.34,1.56,0.64,1); }
-        @keyframes chipSlide { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
-
-        /* ── Stats Modal ── */
-        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; }
-        .stat-row + .stat-row { border-top: 1px solid rgba(60,60,67,0.06); }
-        .stat-win { color: #34c759; font-weight: 700; }
-        .stat-loss { color: #ff3b30; font-weight: 700; }
-        .stat-total { border-top: 2px solid rgba(0,122,255,0.15); margin-top: 0.5rem; padding-top: 0.75rem; font-weight: 800; font-size: 1rem; }
+        .num-pop { animation: numPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes numPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .stat-win { color: #10b981; font-weight: 800; }
+        .stat-loss { color: #f43f5e; font-weight: 800; }
     </style>
 </head>
 <body class="max-w-md mx-auto relative min-h-screen">
     <div id="toast-container"></div>
 
     <!-- Header -->
-    <div id="room-header" class="glass-strong sticky top-3 z-40 mx-3 mt-3 rounded-2xl px-4 py-3 flex justify-between items-center">
+    <div id="room-header" class="glass-panel sticky top-3 z-40 mx-3 mt-3 rounded-2xl px-4 py-3 flex justify-between items-center">
         <div>
             <div class="flex items-center gap-2">
-                <h1 class="text-lg font-black text-gray-800">房间 <span id="display-room-id" class="text-[#007AFF]" th:text="${roomId}"></span></h1>
+                <h1 class="text-base font-extrabold text-slate-900" th:text="#{room.id(${roomId})}">ROOM 000000</h1>
+                <button onclick="showRankingModal()" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[9px] font-bold text-blue-600 hover:bg-blue-100 transition-all uppercase" th:text="#{nav.rules}">
+                    Rules
+                </button>
             </div>
-            <div class="text-xs text-gray-400 font-medium mt-0.5 flex items-center gap-2" id="player-count">0 人在线
-                <a href="/rankings" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/60 text-[10px] font-semibold text-[#007AFF] hover:bg-white transition-all"><i class="fas fa-layer-group"></i>牌型</a>
-            </div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5" id="player-count" th:text="#{room.players.online(0)}">0 PLAYERS ONLINE</div>
         </div>
-        <div class="dropdown" id="top-dropdown" style="position:relative;">
-            <button onclick="toggleDropdown()" class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-all active:scale-90">
-                <i class="fas fa-ellipsis"></i>
+        <div class="flex items-center gap-2">
+            <div class="flex bg-slate-100 p-0.5 rounded-lg mr-1">
+                <a th:href="@{/room/{id}(id=${roomId}, lang='zh')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</a>
+                <a th:href="@{/room/{id}(id=${roomId}, lang='en')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</a>
+            </div>
+            <button onclick="toggleDropdown()" class="w-10 h-10 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center text-slate-400 transition-all active:scale-90">
+                <i class="fas fa-bars-staggered"></i>
             </button>
-            <div class="dropdown-content py-1">
-                <button onclick="hideDropdown();showTransferModal()" class="dropdown-item"><i class="fas fa-exchange-alt text-blue-500"></i> 转移筹码</button>
-                <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> 借贷中心</button>
-                <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-gray-500"></i> 操作历史</button>
-                <div class="dropdown-divider"></div>
-                <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item"><i class="fas fa-sign-out-alt text-gray-500"></i> 暂离房间</button>
+            <div class="dropdown" id="top-dropdown" style="position:relative;">
+                <div class="dropdown-content py-1">
+                    <button onclick="hideDropdown();showTransferModal()" class="dropdown-item"><i class="fas fa-exchange-alt text-blue-500"></i> <span th:text="#{modal.transfer.title}">转移筹码</span></button>
+                    <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> <span th:text="#{modal.borrow.title}">借贷中心</span></button>
+                    <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-slate-400"></i> <span th:text="#{modal.history.title}">操作历史</span></button>
+                    <div class="h-px bg-slate-100 my-1 mx-2"></div>
+                    <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item danger"><i class="fas fa-sign-out-alt"></i> <span th:text="#{nav.logout}">暂离房间</span></button>
+                </div>
             </div>
         </div>
     </div>
@@ -295,88 +186,93 @@
     <!-- Main: Players list + Game info -->
     <div id="game-area" class="mx-3 mt-3">
         <!-- Game Info Banner -->
-        <div id="game-info" class="glass rounded-2xl p-4 mb-3 text-center" style="display:none;">
-            <div class="flex items-center justify-center gap-4">
-                <div>
-                    <div class="text-xs font-semibold text-gray-400">轮次</div>
-                    <div class="text-xl font-black text-gray-800" id="round-display">1</div>
+        <div id="game-info" class="glass-panel rounded-2xl p-4 mb-3" style="display:none;">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em]" th:text="#{room.game.info}">Game Info</div>
+            </div>
+            <div class="flex items-center justify-around">
+                <div class="text-center">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-1" th:text="#{room.round}">Round</div>
+                    <div class="text-xl font-black text-slate-900" id="round-display">1</div>
                 </div>
-                <div class="w-px h-8 bg-gray-200"></div>
-                <div>
-                    <div class="text-xs font-semibold text-gray-400">奖池</div>
-                    <div class="text-xl font-black text-amber-600" id="pot-display">
-                        <i class="fas fa-coins text-amber-400 mr-1 text-sm"></i><span id="pot-amount">0</span>
+                <div class="w-px h-8 bg-slate-100"></div>
+                <div class="text-center">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-1" th:text="#{room.total.pot}">Total Pot</div>
+                    <div class="text-xl font-black text-amber-600 flex items-center justify-center gap-1">
+                        <i class="fas fa-coins text-amber-400 text-xs"></i><span id="pot-amount">0</span>
                     </div>
                 </div>
-                <div class="w-px h-8 bg-gray-200"></div>
-                <div>
-                    <div class="text-xs font-semibold text-gray-400">最高下注</div>
+                <div class="w-px h-8 bg-slate-100"></div>
+                <div class="text-center">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase mb-1" th:text="#{room.highest}">Highest</div>
                     <div class="text-xl font-black text-emerald-600" id="highest-bet-display"><span id="highest-bet">0</span></div>
                 </div>
             </div>
         </div>
 
         <!-- Players List -->
-        <div id="players-container" class="space-y-2.5"></div>
+        <div id="players-container" class="space-y-3"></div>
     </div>
 
     <!-- Fixed Bottom Action Bar -->
     <div id="action-bar" class="action-bar" style="display:none;">
-        <div id="my-info" class="flex items-center justify-between mb-3">
-            <div>
-                <span class="text-xs font-semibold text-gray-400">我的余额</span>
-                <div class="text-lg font-black text-blue-600" id="my-balance">200</div>
-            </div>
-            <div class="text-center">
-                <span class="text-xs font-semibold text-gray-400">最高下注</span>
-                <div class="text-lg font-black text-emerald-600" id="bar-highest-bet">0</div>
-            </div>
-            <div class="text-center">
-                <span class="text-xs font-semibold text-gray-400">我本轮</span>
-                <div class="text-lg font-black text-amber-500" id="bar-my-round-bet">0</div>
-            </div>
-            <div class="text-right">
-                <span class="text-xs font-semibold text-gray-400">待确认</span>
-                <div class="text-lg font-black text-amber-500 pending-chip" id="my-pending">0</div>
-            </div>
+        <div class="action-toggle" onclick="toggleActionBar()">
+            <i class="fas fa-chevron-down text-[10px] text-slate-300 transition-transform duration-300" id="toggle-icon"></i>
         </div>
-
-        <!-- Call Section (only visible when behind the highest bet) -->
-        <div id="call-section" class="mb-2" style="display:none;">
-            <button id="call-btn" onclick="callAction()" class="chip-btn success w-full py-3 text-base">
-                <i class="fas fa-handshake mr-2"></i>跟注 <span id="call-amount">0</span>
-            </button>
-        </div>
-
-        <!-- Undo Section -->
-        <div id="undo-section" class="flex gap-2 mb-2" style="display:none;">
-            <button onclick="clearPendingAction()" id="clear-pending-btn" class="chip-btn danger flex-1">
-                <i class="fas fa-undo mr-1"></i>清空待确认
-            </button>
-            <button onclick="undoConfirmAction()" id="undo-confirm-btn" class="chip-btn danger flex-1">
-                <i class="fas fa-rotate-left mr-1"></i>撤回下注
-            </button>
-        </div>
-
-        <!-- Bet/Raise Section -->
-        <div id="bet-section">
-            <div class="flex justify-between gap-2 mb-2">
-                <button onclick="doBet(1)" class="chip-btn">+1</button>
-                <button onclick="doBet(5)" class="chip-btn">+5</button>
-                <button onclick="doBet(10)" class="chip-btn">+10</button>
-                <button onclick="doBet(25)" class="chip-btn">+25</button>
-                <button onclick="doBet(50)" class="chip-btn">+50</button>
-            </div>
-            <div class="flex gap-2 mb-2">
-                <div class="custom-bet-wrap">
-                    <input type="number" id="custom-bet" placeholder="加注额" min="1">
-                    <button onclick="doBetCustom()" class="chip-btn">添加</button>
+        
+        <div id="action-bar-content">
+            <div id="my-info" class="flex items-center justify-between mb-4 px-1">
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase" th:text="#{room.balance}">Balance</span>
+                    <div class="text-lg font-black text-blue-600" id="my-balance">200</div>
+                </div>
+                <div class="text-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase" th:text="#{room.to.call}">To Call</span>
+                    <div class="text-lg font-black text-emerald-600" id="bar-highest-bet">0</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase" th:text="#{room.pending}">Pending</span>
+                    <div class="text-lg font-black text-amber-500 num-pop" id="my-pending">0</div>
                 </div>
             </div>
-            <div class="flex gap-2">
-                <button onclick="confirmBetAction()" class="chip-btn primary flex-[2]"><i class="fas fa-check mr-1"></i>确认加注</button>
-                <button onclick="foldAction()" class="chip-btn danger"><i class="fas fa-times mr-1"></i>弃牌</button>
-                <button onclick="winAction()" class="chip-btn"><i class="fas fa-trophy mr-1"></i>收池</button>
+
+            <!-- Call Section -->
+            <div id="call-section" class="mb-3" style="display:none;">
+                <button id="call-btn" onclick="callAction()" class="chip-btn success w-full py-4 text-sm font-black shadow-lg shadow-emerald-500/20">
+                    <i class="fas fa-handshake mr-2"></i><span th:text="#{room.btn.call('')}">CALL</span> <span id="call-amount">0</span>
+                </button>
+            </div>
+
+            <!-- Undo Section -->
+            <div id="undo-section" class="flex gap-2 mb-3" style="display:none;">
+                <button onclick="clearPendingAction()" id="clear-pending-btn" class="chip-btn danger flex-1">
+                    <i class="fas fa-trash-can mr-1.5"></i><span th:text="#{room.btn.clear}">CLEAR</span>
+                </button>
+                <button onclick="undoConfirmAction()" id="undo-confirm-btn" class="chip-btn danger flex-1">
+                    <i class="fas fa-rotate-left mr-1.5"></i><span th:text="#{room.btn.undo}">UNDO</span>
+                </button>
+            </div>
+
+            <!-- Bet/Raise Section -->
+            <div id="bet-section">
+                <div class="flex justify-between gap-2 mb-3">
+                    <button onclick="doBet(1)" class="chip-btn">+1</button>
+                    <button onclick="doBet(5)" class="chip-btn">+5</button>
+                    <button onclick="doBet(10)" class="chip-btn">+10</button>
+                    <button onclick="doBet(25)" class="chip-btn">+25</button>
+                    <button onclick="doBet(50)" class="chip-btn">+50</button>
+                </div>
+                <div class="flex gap-2 mb-3">
+                    <div class="custom-bet-wrap">
+                        <input type="number" id="custom-bet" th:placeholder="#{room.custom.amount}" min="1">
+                        <button onclick="doBetCustom()" class="chip-btn primary px-4" th:text="#{room.btn.add}">ADD</button>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="confirmBetAction()" class="chip-btn primary flex-[2]"><i class="fas fa-check-double mr-1.5"></i><span th:text="#{room.btn.confirm}">CONFIRM</span></button>
+                    <button onclick="foldAction()" class="chip-btn danger"><i class="fas fa-times mr-1.5"></i><span th:text="#{room.btn.fold}">FOLD</span></button>
+                    <button onclick="winAction()" class="chip-btn"><i class="fas fa-trophy mr-1.5 text-amber-400"></i><span th:text="#{room.btn.win}">WIN</span></button>
+                </div>
             </div>
         </div>
     </div>
@@ -384,12 +280,12 @@
     <!-- Transfer Modal -->
     <div id="transfer-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('transfer-modal')">
         <div class="modal-card">
-            <h2 class="text-xl font-black text-gray-800 mb-5 flex items-center gap-2"><i class="fas fa-exchange-alt text-blue-500 text-sm"></i> 转移筹码</h2>
+            <h2 class="text-xl font-black text-slate-800 mb-5 flex items-center gap-2"><i class="fas fa-exchange-alt text-blue-500 text-sm"></i> <span th:text="#{modal.transfer.title}">转移筹码</span></h2>
             <select id="transfer-to" class="modal-select mb-3"></select>
-            <input type="number" id="transfer-amount" placeholder="转移数量" class="modal-input mb-5" min="1">
+            <input type="number" id="transfer-amount" th:placeholder="#{modal.transfer.amount}" class="modal-input mb-5" min="1">
             <div class="flex justify-end gap-2.5">
-                <button onclick="closeModal('transfer-modal')" class="modal-btn" style="background:rgba(243,244,246,0.8);color:#374151;">取消</button>
-                <button onclick="submitTransfer()" class="modal-btn" style="background:#007AFF;color:white;">确认转移</button>
+                <button onclick="closeModal('transfer-modal')" class="modal-btn secondary" th:text="#{modal.transfer.cancel}">取消</button>
+                <button onclick="submitTransfer()" class="modal-btn primary" th:text="#{modal.transfer.confirm}">确认转移</button>
             </div>
         </div>
     </div>
@@ -397,11 +293,11 @@
     <!-- Borrow Modal -->
     <div id="borrow-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('borrow-modal')">
         <div class="modal-card">
-            <h2 class="text-xl font-black text-gray-800 mb-5 flex items-center gap-2"><i class="fas fa-hand-holding-usd text-purple-500 text-sm"></i> 向系统借贷</h2>
-            <input type="number" id="borrow-amount" placeholder="借贷数量" class="modal-input mb-5" min="1">
+            <h2 class="text-xl font-black text-slate-800 mb-5 flex items-center gap-2"><i class="fas fa-hand-holding-usd text-purple-500 text-sm"></i> <span th:text="#{modal.borrow.title}">向系统借贷</span></h2>
+            <input type="number" id="borrow-amount" th:placeholder="#{modal.borrow.amount}" class="modal-input mb-5" min="1">
             <div class="flex justify-end gap-2.5">
-                <button onclick="closeModal('borrow-modal')" class="modal-btn" style="background:rgba(243,244,246,0.8);color:#374151;">取消</button>
-                <button onclick="submitBorrow()" class="modal-btn" style="background:#007AFF;color:white;">确认借贷</button>
+                <button onclick="closeModal('borrow-modal')" class="modal-btn secondary" th:text="#{modal.borrow.cancel}">取消</button>
+                <button onclick="submitBorrow()" class="modal-btn primary" th:text="#{modal.borrow.confirm}">确认借贷</button>
             </div>
         </div>
     </div>
@@ -410,23 +306,23 @@
     <div id="player-stats-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('player-stats-modal')">
         <div class="modal-card" style="max-width:380px;max-height:80vh;display:flex;flex-direction:column;">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-black text-gray-800 flex items-center gap-2">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
                     <span id="stats-player-avatar" style="font-size:1.4rem;"></span>
                     <span id="stats-player-name"></span>
                 </h2>
-                <button onclick="closeModal('player-stats-modal')" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 text-lg">×</button>
+                <button onclick="closeModal('player-stats-modal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-lg">×</button>
             </div>
-            <div class="flex-1 overflow-y-auto text-sm" style="max-height:55vh;">
-                <div class="flex items-center justify-between px-1 py-2 text-xs font-semibold text-gray-400 border-b border-gray-100">
-                    <span>局号</span>
-                    <span class="flex gap-4"><span>总下注</span><span>赢得</span><span style="width:50px;text-align:right;">结果</span></span>
+            <div class="flex-1 overflow-y-auto text-[11px]" style="max-height:55vh;">
+                <div class="flex items-center justify-between px-1 py-2 font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider">
+                    <span th:text="#{modal.stats.game.id}">局号</span>
+                    <span class="flex gap-4"><span th:text="#{modal.stats.total.bet}">总下注</span><span th:text="#{modal.stats.won}">赢得</span><span style="width:40px;text-align:right;" th:text="#{modal.stats.result}">结果</span></span>
                 </div>
                 <div id="stats-list-container">
-                    <div class="text-gray-400 text-center py-8 text-xs">加载中...</div>
+                    <div class="text-slate-400 text-center py-8 font-bold uppercase tracking-wider" th:text="#{modal.stats.loading}">加载中...</div>
                 </div>
             </div>
-            <div class="flex items-center justify-between mt-2 pt-2.5 border-t border-gray-100 text-sm font-black" id="stats-total-row">
-                <span class="text-gray-500">总计</span>
+            <div class="flex items-center justify-between mt-2 pt-2.5 border-t border-slate-100 text-sm font-black" id="stats-total-row">
+                <span class="text-slate-500 uppercase" th:text="#{modal.stats.total}">总计</span>
                 <span id="stats-total">0</span>
             </div>
         </div>
@@ -436,18 +332,112 @@
     <div id="history-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('history-modal')">
         <div class="modal-card" style="max-width:400px;max-height:80vh;display:flex;flex-direction:column;">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-black text-gray-800 flex items-center gap-2"><i class="fas fa-history text-gray-400 text-sm"></i> 操作历史</h2>
-                <button onclick="closeModal('history-modal')" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fas fa-history text-slate-400 text-sm"></i> <span th:text="#{modal.history.title}">操作历史</span></h2>
+                <button onclick="closeModal('history-modal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
                     <i class="fas fa-times text-sm"></i>
                 </button>
             </div>
-            <div id="history-list-container" class="flex-1 overflow-y-auto text-xs space-y-0.5 min-h-0" style="max-height:50vh;">
-                <div class="text-gray-400 text-center py-8">加载中...</div>
+            <div id="history-list-container" class="flex-1 overflow-y-auto text-[11px] space-y-1 min-h-0" style="max-height:50vh;">
+                <div class="text-slate-400 text-center py-8 font-bold uppercase tracking-wider" th:text="#{modal.stats.loading}">加载中...</div>
             </div>
-            <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <button id="history-prev" onclick="loadHistory(currentHistoryPage - 1)" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-50 text-gray-500 hover:text-emerald-600 disabled:opacity-30">上一页</button>
-                <span class="text-xs text-gray-400" id="history-page-info">第 1 页</span>
-                <button id="history-next" onclick="loadHistory(currentHistoryPage + 1)" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-50 text-gray-500 hover:text-emerald-600">下一页</button>
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                <button id="history-prev" onclick="loadHistory(currentHistoryPage - 1)" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:text-blue-600 disabled:opacity-30 uppercase" th:text="#{modal.history.prev}">上一页</button>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="history-page-info">Page 1</span>
+                <button id="history-next" onclick="loadHistory(currentHistoryPage + 1)" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 hover:text-blue-600 uppercase" th:text="#{modal.history.next}">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hand Ranking Modal -->
+    <div id="ranking-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('ranking-modal')">
+        <div class="modal-card" style="max-width:420px;max-height:85vh;display:flex;flex-direction:column;padding:1.5rem;">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fas fa-crown text-amber-400 text-sm"></i> <span th:text="#{nav.rules}">牌型参考</span></h2>
+                <button onclick="closeModal('ranking-modal')" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2 pr-1">
+                <div class="rank-card">
+                    <div class="rank-num">1</div>
+                    <div>
+                        <div class="rank-name">皇家同花顺</div>
+                        <div class="rank-desc">Royal Flush</div>
+                    </div>
+                    <div class="rank-cards">A♠K♠Q♠J♠10♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">2</div>
+                    <div>
+                        <div class="rank-name">同花顺</div>
+                        <div class="rank-desc">Straight Flush</div>
+                    </div>
+                    <div class="rank-cards text-rose-500">9♥8♥7♥6♥5♥</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">3</div>
+                    <div>
+                        <div class="rank-name">四条</div>
+                        <div class="rank-desc">Four of a Kind</div>
+                    </div>
+                    <div class="rank-cards">K♠K♥K♦K♣<span class="opacity-20">3♠</span></div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">4</div>
+                    <div>
+                        <div class="rank-name">葫芦</div>
+                        <div class="rank-desc">Full House</div>
+                    </div>
+                    <div class="rank-cards">Q♠Q♥Q♦8♣8♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">5</div>
+                    <div>
+                        <div class="rank-name">同花</div>
+                        <div class="rank-desc">Flush</div>
+                    </div>
+                    <div class="rank-cards text-blue-500 opacity-80">A♣J♣8♣5♣2♣</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">6</div>
+                    <div>
+                        <div class="rank-name">顺子</div>
+                        <div class="rank-desc">Straight</div>
+                    </div>
+                    <div class="rank-cards">10♠<span class="text-rose-500">9♥8♦</span>7♣6♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">7</div>
+                    <div>
+                        <div class="rank-name">三条</div>
+                        <div class="rank-desc">Three of a Kind</div>
+                    </div>
+                    <div class="rank-cards">7♠<span class="text-rose-500">7♥7♦</span>A♣2♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">8</div>
+                    <div>
+                        <div class="rank-name">两对</div>
+                        <div class="rank-desc">Two Pair</div>
+                    </div>
+                    <div class="rank-cards">J♠<span class="text-rose-500">J♥5♦</span>5♣K♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">9</div>
+                    <div>
+                        <div class="rank-name">一对</div>
+                        <div class="rank-desc">One Pair</div>
+                    </div>
+                    <div class="rank-cards">10♠<span class="text-rose-500">10♥A♦</span>7♣3♠</div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-num">10</div>
+                    <div>
+                        <div class="rank-name">高牌</div>
+                        <div class="rank-desc">High Card</div>
+                    </div>
+                    <div class="rank-cards">A♠<span class="text-rose-500">Q♥9♦</span>6♣4♠</div>
+                </div>
             </div>
         </div>
     </div>
@@ -456,11 +446,49 @@
         const roomId = /*[[${roomId}]]*/ '000000';
         const myUserId = /*[[${userId}]]*/ 0;
         const myAvatar = /*[[${avatar}]]*/ '🦁';
+        
+        // i18n for JS
+        const i18n = {
+            playersOnline: /*[[#{room.players.online('{0}')}]]*/ '{0} PLAYERS ONLINE',
+            call: /*[[#{room.btn.call('')}]]*/ 'CALL',
+            statusFolded: /*[[#{status.folded}]]*/ 'Folded',
+            statusCalled: /*[[#{status.called}]]*/ 'Called',
+            statusNeed: /*[[#{status.need('{0}')}]]*/ 'Need {0}',
+            statusBetting: /*[[#{status.betting}]]*/ 'Betting',
+            statusMe: /*[[#{status.me}]]*/ 'ME',
+            statusLoan: /*[[#{status.loan('{0}')}]]*/ 'LOAN {0}',
+            statusPending: /*[[#{status.pending('{0}')}]]*/ 'Pending +{0}',
+            statusRound: /*[[#{status.round('{0}')}]]*/ 'Round +{0}',
+            statusTotal: /*[[#{status.total('{0}')}]]*/ 'Total {0}',
+            toastBetSuccess: /*[[#{toast.bet.success('{0}')}]]*/ 'Confirmed {0} chips',
+            toastFolded: /*[[#{toast.folded}]]*/ 'Folded',
+            toastCallSuccess: /*[[#{toast.call.success('{0}')}]]*/ 'Called {0} chips',
+            toastWinSuccess: /*[[#{toast.win.success}]]*/ 'Collected the pot!',
+            toastTransferSuccess: /*[[#{toast.transfer.success('{0}')}]]*/ 'Transferred {0} chips',
+            toastBorrowSuccess: /*[[#{toast.borrow.success('{0}')}]]*/ 'Borrowed {0} chips',
+            toastInvalidAmount: /*[[#{toast.invalid.amount}]]*/ 'Please enter a valid amount',
+            toastInsufficientBalance: /*[[#{toast.insufficient.balance}]]*/ 'Insufficient balance',
+            confirmFold: /*[[#{toast.confirm.fold}]]*/ 'Are you sure you want to fold?',
+            confirmWin: /*[[#{toast.confirm.win('{0}')}]]*/ 'Are you sure?',
+            confirmUndo: /*[[#{toast.confirm.undo}]]*/ 'Are you sure?',
+            loading: /*[[#{modal.stats.loading}]]*/ 'Loading...',
+            noRecord: /*[[#{modal.stats.no.record}]]*/ 'No records',
+            historyPage: /*[[#{modal.history.page('{0}')}]]*/ 'Page {0}',
+            selectTarget: /*[[#{modal.transfer.target}]]*/ 'Select Target'
+        };
+
         let stompClient = null;
         let roomData = null;
         let myPlayer = null;
         const avatarColors = ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#6366f1'];
-        const actionLabels = { 'CONFIRM_BET':'跟注','CALL':'跟注','RAISE':'加注','FOLD':'弃牌','WIN':'赢池','UNDO_CONFIRM':'撤回' };
+        const actionLabels = { 
+            'CONFIRM_BET': /*[[#{action.CONFIRM_BET}]]*/ 'Bet',
+            'CALL': /*[[#{action.CALL}]]*/ 'Call',
+            'RAISE': /*[[#{action.RAISE}]]*/ 'Raise',
+            'FOLD': /*[[#{action.FOLD}]]*/ 'Fold',
+            'WIN': /*[[#{action.WIN}]]*/ 'Win',
+            'UNDO_CONFIRM': /*[[#{action.UNDO_CONFIRM}]]*/ 'Undo'
+        };
 
         // ── Toast ──
         function showToast(message, type = 'success') {
@@ -477,8 +505,19 @@
         function toggleDropdown() { document.getElementById('top-dropdown').classList.toggle('active'); }
         function hideDropdown() { document.getElementById('top-dropdown').classList.remove('active'); }
         document.addEventListener('click', function(e) {
-            if (!e.target.closest('#top-dropdown')) hideDropdown();
+            if (!e.target.closest('#top-dropdown') && !e.target.closest('button[onclick="toggleDropdown()"]')) hideDropdown();
         });
+
+        // ── Action Bar Toggle ──
+        let isActionBarMinimized = false;
+        function toggleActionBar() {
+            const bar = document.getElementById('action-bar');
+            const icon = document.getElementById('toggle-icon');
+            isActionBarMinimized = !isActionBarMinimized;
+            if (isActionBarMinimized) { bar.classList.add('minimized'); icon.style.transform = 'rotate(180deg)'; updateBodyPadding(60); }
+            else { bar.classList.remove('minimized'); icon.style.transform = 'rotate(0deg)'; updateBodyPadding(bar.offsetHeight); }
+        }
+        function updateBodyPadding(padding) { document.body.style.paddingBottom = (padding + 20) + 'px'; }
 
         // ── WebSocket ──
         function connect() {
@@ -488,10 +527,7 @@
             stompClient.connect({}, function () {
                 stompClient.subscribe('/topic/room/' + roomId, function (message) {
                     const msg = JSON.parse(message.body);
-                    if (msg.event === 'ROOM_UPDATE') {
-                        roomData = msg.data;
-                        renderRoom();
-                    }
+                    if (msg.event === 'ROOM_UPDATE') { roomData = msg.data; renderRoom(); }
                 });
                 stompClient.send("/app/room/" + roomId + "/join", {}, {});
             });
@@ -500,47 +536,35 @@
         // ── Render ──
         function renderRoom() {
             if (!roomData) return;
-
             const container = document.getElementById('players-container');
             const gameInfo = document.getElementById('game-info');
             const actionBar = document.getElementById('action-bar');
             const betSection = document.getElementById('bet-section');
             const transferSelect = document.getElementById('transfer-to');
 
-            // Update header
-            document.getElementById('player-count').innerText = (roomData.players || []).length + ' 人在线';
+            document.getElementById('player-count').innerText = i18n.playersOnline.replace('{0}', (roomData.players || []).length);
 
-            // Game info
             const hasGame = roomData.game && !roomData.game.isFinished;
             if (hasGame) {
                 gameInfo.style.display = 'block';
                 document.getElementById('round-display').innerText = roomData.game.roundNumber;
                 document.getElementById('pot-amount').innerText = roomData.game.pot;
                 document.getElementById('highest-bet').innerText = roomData.game.currentHighestBet || 0;
-            } else {
-                gameInfo.style.display = 'none';
-            }
+            } else { gameInfo.style.display = 'none'; }
 
-            // Find my player
-            myPlayer = roomData.players ? roomData.players.find(p => p.userId === myUserId) : null;
+            myPlayer = (roomData.players || []).find(p => p.userId === myUserId);
 
-            // Update transfer select
-            transferSelect.innerHTML = '<option value="">选择目标玩家</option>';
+            transferSelect.innerHTML = `<option value="">${i18n.selectTarget}</option>`;
             if (roomData.players) {
                 roomData.players.forEach(p => {
-                    if (p.userId !== myUserId && p.isActive) {
-                        transferSelect.innerHTML += `<option value="${p.userId}">${p.nickname}</option>`;
-                    }
+                    if (p.userId !== myUserId && p.isActive) { transferSelect.innerHTML += `<option value="${p.userId}">${p.nickname}</option>`; }
                 });
             }
 
-            // Show/hide action bar
             if (myPlayer && hasGame && !myPlayer.isFolded) {
                 const isConfirmed = myPlayer.isBetConfirmed;
-                const hasUndoable = !isConfirmed || (myPlayer.currentRoundBet || 0) > 0;
                 actionBar.style.display = 'block';
                 betSection.style.display = isConfirmed ? 'none' : 'block';
-
                 const undoSection = document.getElementById('undo-section');
                 const clearBtn = document.getElementById('clear-pending-btn');
                 const undoBtn = document.getElementById('undo-confirm-btn');
@@ -549,9 +573,8 @@
                 undoSection.style.display = (showClear || showUndo) ? 'flex' : 'none';
                 clearBtn.style.display = showClear ? '' : 'none';
                 undoBtn.style.display = showUndo ? '' : 'none';
-            } else {
-                actionBar.style.display = 'none';
-            }
+                setTimeout(() => { if (!isActionBarMinimized) updateBodyPadding(actionBar.offsetHeight); }, 0);
+            } else { actionBar.style.display = 'none'; updateBodyPadding(0); }
 
             if (myPlayer) {
                 document.getElementById('my-balance').innerText = myPlayer.balance;
@@ -561,83 +584,65 @@
                 const myPending = myPlayer.pendingBet || 0;
                 const myTotalThisRound = myRoundBet + myPending;
                 document.getElementById('bar-highest-bet').innerText = highestBet;
-                document.getElementById('bar-my-round-bet').innerText = myTotalThisRound;
+                document.getElementById('my-pending').innerText = myPending;
 
-                // Show call section if I'm behind the highest bet
                 const callSection = document.getElementById('call-section');
                 const callAmount = highestBet - myTotalThisRound;
                 if (hasGame && highestBet > 0 && callAmount > 0 && !myPlayer.isFolded && !myPlayer.isBetConfirmed) {
                     callSection.style.display = 'block';
                     document.getElementById('call-amount').innerText = callAmount;
-                } else {
-                    callSection.style.display = 'none';
-                }
+                } else { callSection.style.display = 'none'; }
             }
 
-            // Render players
             container.innerHTML = '';
             if (roomData.players) {
                 roomData.players.forEach((player, index) => {
-                    const card = document.createElement('div');
-                    const isMe = player.userId === myUserId;
-                    const isFolded = hasGame && player.isFolded;
-                    const color = avatarColors[index % avatarColors.length];
-
-                    // Status indicators
-                    const highestBet = (roomData.game && roomData.game.currentHighestBet) || 0;
-                    let statusBadge = '';
-                    if (isFolded) {
-                        statusBadge = '<span class="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">已弃牌</span>';
-                    } else if (hasGame && player.isBetConfirmed) {
-                        statusBadge = '<span class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">已跟注/已加注</span>';
-                    } else if (hasGame && !player.isFolded) {
-                        const playerTotal = (player.currentRoundBet || 0) + (player.pendingBet || 0);
-                        if (highestBet > 0 && playerTotal < highestBet) {
-                            statusBadge = '<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">需跟注 ' + (highestBet - playerTotal) + '</span>';
-                        } else {
-                            statusBadge = '<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">下注中</span>';
+                    try {
+                        const card = document.createElement('div');
+                        const isMe = player.userId === myUserId;
+                        const isFolded = hasGame && player.isFolded;
+                        const color = avatarColors[index % avatarColors.length];
+                        const highestBet = (roomData.game && roomData.game.currentHighestBet) || 0;
+                        let statusBadge = '';
+                        if (isFolded) statusBadge = `<span class="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full uppercase">${i18n.statusFolded}</span>`;
+                        else if (hasGame && player.isBetConfirmed) statusBadge = `<span class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">${i18n.statusCalled}</span>`;
+                        else if (hasGame && !player.isFolded) {
+                            const playerTotal = (player.currentRoundBet || 0) + (player.pendingBet || 0);
+                            if (highestBet > 0 && playerTotal < highestBet) statusBadge = `<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase">${i18n.statusNeed.replace('{0}', highestBet - playerTotal)}</span>`;
+                            else statusBadge = `<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full uppercase">${i18n.statusBetting}</span>`;
                         }
-                    }
 
-                    // Bet info
-                    let betHtml = '';
-                    if (hasGame) {
-                        if (player.pendingBet > 0) {
-                            betHtml += `<span class="text-[11px] font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded">待确认 +${player.pendingBet}</span> `;
+                        let betHtml = '';
+                        if (hasGame) {
+                            if (player.pendingBet > 0) betHtml += `<span class="text-[10px] font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusPending.replace('{0}', player.pendingBet)}</span> `;
+                            if (player.roundBets && player.roundBets.length > 0) {
+                                player.roundBets.forEach(rb => { betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusRound.replace('{0}', rb.amount)}</span> `; });
+                            } else if (player.currentRoundBet > 0) {
+                                betHtml += `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded uppercase tracking-wider">${i18n.statusRound.replace('{0}', player.currentRoundBet)}</span> `;
+                            }
+                            if (player.totalBet > 0) betHtml += `<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">${i18n.statusTotal.replace('{0}', player.totalBet)}</span>`;
                         }
-                        if (player.roundBets && player.roundBets.length > 0) {
-                            player.roundBets.forEach(rb => {
-                                betHtml += `<span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">第${rb.roundNumber}轮 +${rb.amount}</span> `;
-                            });
-                        } else if (player.currentRoundBet > 0) {
-                            betHtml += `<span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">本轮 +${player.currentRoundBet}</span> `;
-                        }
-                        if (player.totalBet > 0) {
-                            betHtml += `<span class="text-[11px] font-bold text-gray-500">本局 ${player.totalBet}</span>`;
-                        }
-                    }
 
-                    card.onclick = function() { showPlayerStats(player.userId); };
-
-                    card.className = `glass rounded-2xl p-4 player-card ${isMe ? 'is-me' : ''} ${isFolded ? 'folded' : ''}`;
-                    card.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <div class="avatar-placeholder" style="background:${color};">${player.avatar || player.nickname.charAt(0).toUpperCase()}</div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold text-gray-800 text-sm truncate">${player.nickname}</span>
-                                    ${isMe ? '<span class="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">我</span>' : ''}
-                                    ${statusBadge}
+                        card.onclick = () => showPlayerStats(player.userId);
+                        card.className = `glass-card rounded-2xl p-4 player-card ${isMe ? 'is-me' : ''} ${isFolded ? 'folded' : ''}`;
+                        card.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="avatar-placeholder" style="background:${color};">${player.avatar || (player.nickname || '?').charAt(0).toUpperCase()}</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-800 text-sm truncate">${player.nickname}</span>
+                                        ${isMe ? `<span class="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">${i18n.statusMe}</span>` : ''}
+                                        ${statusBadge}
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-sm font-black" style="color:${isMe ? '#2563eb' : '#059669'};">${player.balance}</span>
+                                        ${player.borrowedTotal > 0 ? `<span class="text-[10px] text-amber-500 font-bold">${i18n.statusLoan.replace('{0}', player.borrowedTotal)}</span>` : ''}
+                                    </div>
+                                    ${betHtml ? '<div class="flex items-center gap-1 mt-2 flex-wrap">' + betHtml + '</div>' : ''}
                                 </div>
-                                <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="text-sm font-black" style="color:${isMe ? '#3b82f6' : '#059669'};">${player.balance}</span>
-                                    ${player.borrowedTotal > 0 ? `<span class="text-[10px] text-amber-500 font-semibold">(借 ${player.borrowedTotal})</span>` : ''}
-                                </div>
-                                ${betHtml ? '<div class="flex items-center gap-1 mt-1 flex-wrap">' + betHtml + '</div>' : ''}
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(card);
+                            </div>`;
+                        container.appendChild(card);
+                    } catch(e) { console.error("Render player error", e); }
                 });
             }
         }
@@ -647,163 +652,43 @@
             if (!myPlayer || myPlayer.isFolded || myPlayer.isBetConfirmed) return;
             stompClient.send("/app/room/" + roomId + "/bet", {}, JSON.stringify({ actionType: 'BET', amount: amount }));
         }
-
         function doBetCustom() {
             const val = parseInt(document.getElementById('custom-bet').value);
             if (val > 0) { doBet(val); document.getElementById('custom-bet').value = ''; }
-            else showToast('请输入有效数量', 'error');
+            else showToast(i18n.toastInvalidAmount, 'error');
         }
-
         function confirmBetAction() {
-            if (!myPlayer || myPlayer.pendingBet <= 0) {
-                showToast('请先添加筹码', 'error');
-                return;
-            }
+            if (!myPlayer || myPlayer.pendingBet <= 0) { showToast(i18n.toastInvalidAmount, 'error'); return; }
             stompClient.send("/app/room/" + roomId + "/confirmBet", {}, {});
-            showToast('已确认下注 ' + myPlayer.pendingBet + ' 筹码', 'success');
+            showToast(i18n.toastBetSuccess.replace('{0}', myPlayer.pendingBet), 'success');
         }
-
         function foldAction() {
             if (!myPlayer || myPlayer.isFolded) return;
-            if (confirm('确定要弃牌吗？已投放的筹码不会归还。')) {
-                stompClient.send("/app/room/" + roomId + "/fold", {}, {});
-                showToast('已弃牌', 'info');
-            }
+            if (confirm(i18n.confirmFold)) { stompClient.send("/app/room/" + roomId + "/fold", {}, {}); showToast(i18n.toastFolded, 'info'); }
         }
-
         function callAction() {
             if (!myPlayer || myPlayer.isFolded || myPlayer.isBetConfirmed) return;
-            const callAmountEl = document.getElementById('call-amount');
-            const amount = parseInt(callAmountEl.innerText);
-            if (amount <= 0) {
-                showToast('无需跟注', 'info');
-                return;
-            }
-            if (myPlayer.balance < amount) {
-                showToast('余额不足，无法跟注 ' + amount, 'error');
-                return;
-            }
+            const amount = parseInt(document.getElementById('call-amount').innerText);
+            if (amount <= 0) return;
+            if (myPlayer.balance < amount) { showToast(i18n.toastInsufficientBalance, 'error'); return; }
             stompClient.send("/app/room/" + roomId + "/call", {}, {});
-            showToast('跟注 ' + amount + ' 筹码', 'success');
+            showToast(i18n.toastCallSuccess.replace('{0}', amount), 'success');
         }
-
         function winAction() {
-            if (!roomData || !roomData.game || roomData.game.pot <= 0) {
-                showToast('奖池为空', 'error');
-                return;
-            }
-            if (confirm('确定要获取全部奖池 ' + roomData.game.pot + ' 筹码吗？')) {
-                stompClient.send("/app/room/" + roomId + "/win", {}, {});
-                showToast('获取了全部奖池！', 'success');
-            }
+            if (!roomData || !roomData.game || roomData.game.pot <= 0) return;
+            if (confirm(i18n.confirmWin.replace('{0}', roomData.game.pot))) { stompClient.send("/app/room/" + roomId + "/win", {}, {}); showToast(i18n.toastWinSuccess, 'success'); }
         }
-
-        function clearPendingAction() {
-            stompClient.send("/app/room/" + roomId + "/undoBet", {}, {});
-            showToast('已清空待确认筹码', 'info');
-        }
-
+        function clearPendingAction() { stompClient.send("/app/room/" + roomId + "/undoBet", {}, {}); }
         function undoConfirmAction() {
-            if (!confirm('确定要撤回本轮下注吗？已确认的筹码将返还余额。')) return;
+            if (!confirm(i18n.confirmUndo)) return;
             stompClient.send("/app/room/" + roomId + "/undoConfirm", {}, {});
-            showToast('已撤回本轮下注', 'info');
         }
-
-        function tempLeaveRoom() {
-            window.location.href = '/';
-        }
-
-        let currentHistoryPage = 1;
-        const historyPageSize = 30;
-
-        // ── Player Stats ──
-        let statsPlayerId = null;
-
-        function showPlayerStats(userId) {
-            statsPlayerId = userId;
-            const player = roomData.players ? roomData.players.find(p => p.userId === userId) : null;
-            document.getElementById('stats-player-avatar').textContent = player ? (player.avatar || '🦁') : '🦁';
-            document.getElementById('stats-player-name').textContent = player ? player.nickname : '玩家';
-            document.getElementById('stats-list-container').innerHTML = '<div class="text-gray-400 text-center py-8 text-xs">加载中...</div>';
-            document.getElementById('stats-total').textContent = '-';
-            document.getElementById('player-stats-modal').classList.add('show');
-
-            fetch('/api/room/' + roomId + '/player/' + userId + '/games')
-                .then(res => res.json())
-                .then(games => {
-                    if (!games || games.length === 0) {
-                        document.getElementById('stats-list-container').innerHTML = '<div class="text-gray-400 text-center py-8 text-xs">暂无记录</div>';
-                        document.getElementById('stats-total').textContent = '0';
-                        return;
-                    }
-                    let html = '';
-                    let totalResult = 0;
-                    games.forEach(g => {
-                        const result = g.result || 0;
-                        totalResult += result;
-                        const resultClass = g.wonAmount > 0 ? 'stat-win' : (result < 0 ? 'stat-loss' : 'text-gray-500');
-                        const resultSign = g.wonAmount > 0 ? '+' : '';
-                        html += '<div class="stat-row">';
-                        html += '<span class="font-semibold text-gray-600">#' + g.gameId + '</span>';
-                        html += '<span class="flex gap-4 items-center">';
-                        html += '<span class="font-medium text-gray-500">' + g.totalBet + '</span>';
-                        html += '<span class="font-medium text-gray-500">' + g.wonAmount + '</span>';
-                        html += '<span class="' + resultClass + ' text-right" style="width:50px;">' + resultSign + result + '</span>';
-                        html += '</span></div>';
-                    });
-                    document.getElementById('stats-list-container').innerHTML = html;
-                    const totalClass = totalResult > 0 ? 'stat-win' : (totalResult < 0 ? 'stat-loss' : 'text-gray-500');
-                    document.getElementById('stats-total').textContent = (totalResult > 0 ? '+' : '') + totalResult;
-                    document.getElementById('stats-total').className = totalClass;
-                })
-                .catch(() => {
-                    document.getElementById('stats-list-container').innerHTML = '<div class="text-red-400 text-center py-8 text-xs">加载失败</div>';
-                });
-        }
-
-        function showHistoryModal() {
-            document.getElementById('history-modal').classList.add('show');
-            currentHistoryPage = 1;
-            loadHistory(1);
-        }
-
-        function loadHistory(page) {
-            const container = document.getElementById('history-list-container');
-            const prevBtn = document.getElementById('history-prev');
-            const nextBtn = document.getElementById('history-next');
-            const pageInfo = document.getElementById('history-page-info');
-
-            container.innerHTML = '<div class="text-gray-400 text-center py-8">加载中...</div>';
-            currentHistoryPage = page;
-            pageInfo.innerText = '第 ' + page + ' 页';
-            prevBtn.disabled = page <= 1;
-
-            fetch('/api/room/' + roomId + '/history?page=' + page + '&size=' + historyPageSize)
-                .then(res => res.json())
-                .then(logs => {
-                    if (!logs || logs.length === 0) {
-                        container.innerHTML = '<div class="text-gray-400 text-center py-8">暂无操作记录</div>';
-                        nextBtn.disabled = true;
-                        return;
-                    }
-                    nextBtn.disabled = logs.length < historyPageSize;
-                    let html = '';
-                    logs.forEach(log => {
-                        const label = actionLabels[log.actionType] || log.actionType;
-                        const amountText = log.amount > 0 ? ' +' + log.amount : '';
-                        const time = log.createTime ? new Date(log.createTime).toLocaleTimeString() : '';
-                        html += '<div class="flex justify-between items-center py-0.5"><span><span class="font-semibold text-gray-700">' + log.nickname + '</span> <span class="text-gray-500">' + label + amountText + '</span></span><span class="text-gray-400 text-[10px]">' + time + '</span></div>';
-                    });
-                    container.innerHTML = html;
-                })
-                .catch(() => {
-                    container.innerHTML = '<div class="text-red-400 text-center py-8">加载失败</div>';
-                });
-        }
+        function tempLeaveRoom() { window.location.href = '/'; }
 
         // ── Modals ──
         function showTransferModal() { document.getElementById('transfer-modal').classList.add('show'); }
         function showBorrowModal() { document.getElementById('borrow-modal').classList.add('show'); }
+        function showRankingModal() { document.getElementById('ranking-modal').classList.add('show'); }
         function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
         function submitTransfer() {
@@ -813,18 +698,79 @@
                 stompClient.send("/app/room/" + roomId + "/transfer", {}, JSON.stringify({ toUserId: toUserId, amount: amount }));
                 closeModal('transfer-modal');
                 document.getElementById('transfer-amount').value = '';
-                showToast('转移了 ' + amount + ' 筹码', 'success');
-            } else showToast('请选择目标和输入数量', 'error');
+                showToast(i18n.toastTransferSuccess.replace('{0}', amount), 'success');
+            } else showToast(i18n.toastInvalidAmount, 'error');
         }
-
         function submitBorrow() {
             const amount = parseInt(document.getElementById('borrow-amount').value);
             if (amount > 0) {
                 stompClient.send("/app/room/" + roomId + "/borrow", {}, JSON.stringify({ amount: amount }));
                 closeModal('borrow-modal');
                 document.getElementById('borrow-amount').value = '';
-                showToast('借入了 ' + amount + ' 筹码', 'success');
-            } else showToast('请输入有效数量', 'error');
+                showToast(i18n.toastBorrowSuccess.replace('{0}', amount), 'success');
+            } else showToast(i18n.toastInvalidAmount, 'error');
+        }
+
+        // ── Stats ──
+        function showPlayerStats(userId) {
+            const player = (roomData.players || []).find(p => p.userId === userId);
+            document.getElementById('stats-player-avatar').textContent = player ? (player.avatar || '🦁') : '🦁';
+            document.getElementById('stats-player-name').textContent = player ? player.nickname : 'Player';
+            document.getElementById('stats-list-container').innerHTML = `<div class="text-slate-400 text-center py-8 text-xs font-bold uppercase">${i18n.loading}</div>`;
+            document.getElementById('stats-total').textContent = '-';
+            document.getElementById('player-stats-modal').classList.add('show');
+
+            fetch('/api/room/' + roomId + '/player/' + userId + '/games')
+                .then(res => res.json())
+                .then(games => {
+                    if (!games || games.length === 0) {
+                        document.getElementById('stats-list-container').innerHTML = `<div class="text-slate-400 text-center py-8 text-xs font-bold uppercase">${i18n.noRecord}</div>`;
+                        document.getElementById('stats-total').textContent = '0';
+                        return;
+                    }
+                    let html = '', totalResult = 0;
+                    games.forEach(g => {
+                        const result = g.result || 0; totalResult += result;
+                        const resultClass = result > 0 ? 'stat-win' : (result < 0 ? 'stat-loss' : 'text-slate-400');
+                        html += `<div class="flex justify-between items-center py-2 border-b border-slate-50">
+                            <span class="font-bold text-slate-400">#${g.gameId}</span>
+                            <span class="flex gap-4 items-center">
+                                <span class="font-bold text-slate-600">${g.totalBet}</span>
+                                <span class="font-bold text-slate-600">${g.wonAmount}</span>
+                                <span class="${resultClass} text-right font-black" style="width:40px;">${result > 0 ? '+' : ''}${result}</span>
+                            </span></div>`;
+                    });
+                    document.getElementById('stats-list-container').innerHTML = html;
+                    document.getElementById('stats-total').textContent = (totalResult > 0 ? '+' : '') + totalResult;
+                    document.getElementById('stats-total').className = totalResult > 0 ? 'stat-win' : (totalResult < 0 ? 'stat-loss' : 'text-slate-400');
+                })
+                .catch(() => { document.getElementById('stats-list-container').innerHTML = '<div class="text-rose-400 text-center py-8 text-xs font-bold uppercase">Error</div>'; });
+        }
+
+        let currentHistoryPage = 1;
+        function showHistoryModal() { document.getElementById('history-modal').classList.add('show'); currentHistoryPage = 1; loadHistory(1); }
+        function loadHistory(page) {
+            const container = document.getElementById('history-list-container');
+            const prevBtn = document.getElementById('history-prev'), nextBtn = document.getElementById('history-next'), pageInfo = document.getElementById('history-page-info');
+            container.innerHTML = `<div class="text-slate-400 text-center py-8 font-bold uppercase tracking-wider">${i18n.loading}</div>`;
+            currentHistoryPage = page;
+            pageInfo.innerText = i18n.historyPage.replace('{0}', page);
+            prevBtn.disabled = page <= 1;
+            fetch('/api/room/' + roomId + '/history?page=' + page + '&size=30')
+                .then(res => res.json())
+                .then(logs => {
+                    if (!logs || logs.length === 0) { container.innerHTML = `<div class="text-slate-400 text-center py-8 font-bold uppercase tracking-wider">${i18n.noRecord}</div>`; nextBtn.disabled = true; return; }
+                    nextBtn.disabled = logs.length < 30;
+                    let html = '';
+                    logs.forEach(log => {
+                        const label = actionLabels[log.actionType] || log.actionType;
+                        const time = log.createTime ? new Date(log.createTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                        html += `<div class="flex justify-between items-center py-1">
+                            <span><span class="font-bold text-slate-700">${log.nickname}</span> <span class="text-slate-500 font-medium">${label}${log.amount > 0 ? ' +' + log.amount : ''}</span></span>
+                            <span class="text-slate-300 font-bold">${time}</span></div>`;
+                    });
+                    container.innerHTML = html;
+                }).catch(() => { container.innerHTML = '<div class="text-rose-400 text-center py-8 font-bold uppercase tracking-wider">Error</div>'; });
         }
 
         window.onload = connect;

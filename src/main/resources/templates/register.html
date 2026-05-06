@@ -3,24 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>注册 - 德州扑克计分器</title>
+    <title th:text="#{register.title}">注册 - 德州扑克计分器</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
-                }
-            }
-        }
-    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             min-height: 100vh;
-            background: linear-gradient(180deg, #f2f5fa 0%, #e6ecf4 100%);
+            background: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(147, 51, 234, 0.05) 0px, transparent 50%);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             display: flex;
             align-items: center;
@@ -28,140 +22,145 @@
             padding: 1.5rem;
             -webkit-font-smoothing: antialiased;
         }
-        .glass {
-            background: rgba(255,255,255,0.68);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255,255,255,0.5);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05);
         }
         .input-glass {
-            background: rgba(255,255,255,0.5);
-            border: 1.5px solid rgba(60,60,67,0.1);
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
             outline: none;
-            font-weight: 500;
         }
         .input-glass:focus {
-            background: rgba(255,255,255,0.8);
-            border-color: #007AFF;
-            box-shadow: 0 0 0 4px rgba(0,122,255,0.12);
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
-        .btn-primary {
-            background: #007AFF;
-            box-shadow: 0 4px 16px rgba(0,122,255,0.25);
-            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+        .btn-primary-glow {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
-            font-weight: 700;
-            border: none;
-            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+            transition: all 0.3s ease;
         }
-        .btn-primary:hover {
+        .btn-primary-glow:hover {
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
             transform: translateY(-1px);
-            box-shadow: 0 8px 24px rgba(0,122,255,0.35);
         }
-        .btn-primary:active { transform: scale(0.97); }
         .card-enter {
-            animation: cardFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+            animation: cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
         @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(16px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .avatar-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
+            gap: 10px;
         }
         .avatar-option {
             width: 100%;
             aspect-ratio: 1;
-            border-radius: 14px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.6rem;
             cursor: pointer;
-            border: 3px solid transparent;
-            background: rgba(255,255,255,0.5);
-            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .avatar-option:hover {
-            background: rgba(255,255,255,0.8);
+            background: white;
             transform: scale(1.05);
         }
         .avatar-option.selected {
-            border-color: #007AFF;
-            background: rgba(0,122,255,0.08);
-            transform: scale(1.05);
-            box-shadow: 0 0 0 4px rgba(0,122,255,0.12);
+            border-color: #3b82f6;
+            background: white;
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="glass rounded-3xl p-8 w-full max-w-md relative z-10 card-enter">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/80 backdrop-blur-sm text-[#007AFF] text-xl shadow-sm mb-4">
-                <i class="fas fa-diamond"></i>
+    <div class="glass-panel rounded-[2rem] p-8 w-full max-w-md relative z-10 card-enter">
+        <div class="absolute top-6 right-8">
+            <div class="flex bg-slate-100 p-0.5 rounded-lg">
+                <a th:href="@{/register(lang='zh')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'zh' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">中</a>
+                <a th:href="@{/register(lang='en')}" class="text-[9px] font-black px-2 py-1 rounded-md transition-all" th:classappend="${#locale.language == 'en' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}">EN</a>
             </div>
-            <h1 class="text-2xl font-black text-gray-800 tracking-tight">创建账号</h1>
-            <p class="text-sm text-gray-500 mt-1 font-medium">注册一个新账户</p>
         </div>
 
-        <div th:if="${error}" class="bg-red-50/80 backdrop-blur-sm border border-red-200/60 text-red-600 p-3.5 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
-            <i class="fas fa-circle-exclamation text-red-400"></i>
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl shadow-lg shadow-blue-500/20 mb-6">
+                <i class="fas fa-diamond"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight" th:text="#{register.title}">创建账号</h1>
+            <p class="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]" th:text="#{register.tagline}">Join the high stakes</p>
+        </div>
+
+        <div th:if="${error}" class="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-xl mb-6 text-sm font-medium flex items-center gap-3">
+            <i class="fas fa-circle-exclamation text-rose-400"></i>
             <span th:text="${error}">错误信息</span>
         </div>
 
-        <form action="/register" method="post" class="space-y-4">
+        <form action="/register" method="post" class="space-y-5">
             <div>
-                <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="far fa-user text-gray-400 mr-1.5"></i>用户名</label>
-                <input type="text" name="username" required placeholder="登录用用户名" class="input-glass w-full px-4 py-3 rounded-xl text-gray-800 placeholder:text-gray-400">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{login.username}">Username</label>
+                <input type="text" name="username" required th:placeholder="#{login.username}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
-                <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="fas fa-lock text-gray-400 mr-1.5"></i>密码</label>
-                <input type="password" name="password" required placeholder="设置密码" class="input-glass w-full px-4 py-3 rounded-xl text-gray-800 placeholder:text-gray-400">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{login.password}">Password</label>
+                <input type="password" name="password" required th:placeholder="#{login.password}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
-                <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="far fa-smile text-gray-400 mr-1.5"></i>昵称</label>
-                <input type="text" name="nickname" required placeholder="房间内显示的昵称" class="input-glass w-full px-4 py-3 rounded-xl text-gray-800 placeholder:text-gray-400">
+                <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider" th:text="#{register.nickname}">Nickname</label>
+                <input type="text" name="nickname" required th:placeholder="#{register.nickname}" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
             </div>
             <div>
-                <label class="text-xs font-semibold text-gray-500 mb-1.5 block"><i class="far fa-images text-gray-400 mr-1.5"></i>选择头像</label>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="#{register.choose.avatar}">Choose Avatar</label>
+                    <button type="button" onclick="randomAvatar()" class="text-[10px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <i class="fas fa-dice"></i> <span th:text="#{register.random}">RANDOM</span>
+                    </button>
+                </div>
                 <div class="avatar-grid" id="avatar-grid">
                     <div th:each="av : ${avatars}" class="avatar-option" th:data-avatar="${av}" th:text="${av}" onclick="selectAvatar(this)"></div>
                 </div>
                 <input type="hidden" name="avatar" id="selected-avatar" value="">
-                <button type="button" onclick="randomAvatar()" class="mt-2 text-xs font-semibold text-[#007AFF] hover:text-[#0066d6] transition-colors">
-                    <i class="fas fa-dice mr-1"></i>随机分配
-                </button>
             </div>
-            <button type="submit" class="btn-primary w-full py-3.5 rounded-xl text-base">
-                <i class="fas fa-user-plus mr-2"></i>注册
+            <button type="submit" class="btn-primary-glow w-full py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                <span th:text="#{register.btn}">注册账号</span> <i class="fas fa-user-plus text-xs"></i>
             </button>
         </form>
 
-        <script>
-            function selectAvatar(el) {
-                document.querySelectorAll('.avatar-option').forEach(a => a.classList.remove('selected'));
-                el.classList.add('selected');
-                document.getElementById('selected-avatar').value = el.getAttribute('data-avatar');
-            }
-            function randomAvatar() {
-                const options = document.querySelectorAll('.avatar-option');
-                const idx = Math.floor(Math.random() * options.length);
-                selectAvatar(options[idx]);
-            }
-            // Random select on page load
-            document.addEventListener('DOMContentLoaded', function() {
-                randomAvatar();
-            });
-        </script>
-
-        <div class="mt-6 text-center">
-            <span class="text-sm text-gray-400">已有账号？</span>
-            <a href="/login" class="text-sm font-bold text-[#007AFF] hover:text-[#0066d6] transition-colors ml-1">立即登录</a>
+        <div class="mt-8 pt-8 border-t border-slate-100 text-center">
+            <span class="text-xs font-bold text-slate-400" th:text="#{register.has.account}">已有账号？</span>
+            <a href="/login" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1" th:text="#{register.login.now}">立即登录</a>
         </div>
     </div>
+
+    <script>
+        function selectAvatar(el) {
+            document.querySelectorAll('.avatar-option').forEach(a => a.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('selected-avatar').value = el.getAttribute('data-avatar');
+        }
+        function randomAvatar() {
+            const options = document.querySelectorAll('.avatar-option');
+            const idx = Math.floor(Math.random() * options.length);
+            selectAvatar(options[idx]);
+        }
+        // Random select on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            randomAvatar();
+        });
+    </script>
 </body>
 </html>
