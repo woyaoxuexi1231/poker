@@ -155,13 +155,17 @@ public class RoomQueryService {
         if (game != null) {
             List<ActionLog> gameLogs = actionLogMapper.selectList(new LambdaQueryWrapper<ActionLog>()
                     .eq(ActionLog::getGameId, game.getId())
-                    .in(ActionLog::getActionType, "CONFIRM_BET", "CALL", "RAISE", "CHECK")
+                    .in(ActionLog::getActionType, "CONFIRM_BET", "CALL", "RAISE", "CHECK", "UNDO_CONFIRM")
                     .orderByAsc(ActionLog::getRoundNumber));
             for (ActionLog al : gameLogs) {
                 roundBetMap.computeIfAbsent(al.getUserId(), k -> new HashMap<>());
                 Map<Integer, Integer> rounds = roundBetMap.get(al.getUserId());
                 int rn = al.getRoundNumber();
-                rounds.put(rn, rounds.getOrDefault(rn, 0) + al.getAmount());
+                if ("UNDO_CONFIRM".equals(al.getActionType())) {
+                    rounds.put(rn, rounds.getOrDefault(rn, 0) - al.getAmount());
+                } else {
+                    rounds.put(rn, rounds.getOrDefault(rn, 0) + al.getAmount());
+                }
             }
         }
 

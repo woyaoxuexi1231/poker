@@ -405,6 +405,7 @@ public class BettingService {
         roomPlayerMapper.updateById(rp);
         game.setPot(game.getPot() - currentBet);
         gp.setCurrentRoundBet(0);
+        gp.setTotalBet(gp.getTotalBet() - currentBet);
         gp.setPendingBet(0);
         gp.setIsBetConfirmed(false);
         gamePlayerMapper.updateById(gp);
