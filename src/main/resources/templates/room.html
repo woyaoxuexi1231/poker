@@ -76,8 +76,8 @@
             color: #1c1c1e;
             padding: 0.7rem 0.5rem;
             border-radius: 14px;
-            font-weight: 700;
-            font-size: 1rem;
+            font-weight: 600;
+            font-size: 0.85rem;
             transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
             cursor: pointer;
             letter-spacing: -0.01em;
@@ -89,6 +89,8 @@
             background: #007AFF;
             border-color: transparent;
             color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
             box-shadow: 0 4px 12px rgba(0,122,255,0.25);
         }
         .chip-btn.primary:hover { background: #0066d6; }
@@ -97,6 +99,8 @@
             background: #34c759;
             border-color: transparent;
             color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
             box-shadow: 0 4px 12px rgba(52,199,89,0.25);
         }
         .chip-btn.success:hover { background: #2db84e; }
@@ -134,12 +138,12 @@
             background: transparent;
             border: none;
             text-align: center;
-            font-weight: 700;
-            font-size: 0.95rem;
+            font-weight: 600;
+            font-size: 0.8rem;
             color: #1c1c1e;
             outline: none;
             min-width: 0;
-            padding: 0.3rem;
+            padding: 0.2rem;
         }
         .custom-bet-wrap input::placeholder { color: #8e8e93; font-weight: 500; }
         .custom-bet-wrap .chip-btn { background: #007AFF; color: white; border: none; }
@@ -253,29 +257,6 @@
         .pending-chip { animation: chipSlide 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         @keyframes chipSlide { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
 
-        /* ── Floating Rankings Button ── */
-        .rankings-float {
-            position: fixed;
-            right: 1.25rem;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
-            width: 44px; height: 44px;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.6);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-            cursor: pointer;
-            transition: all 0.2s;
-            z-index: 45;
-            text-decoration: none;
-            color: #007AFF;
-            font-size: 1.1rem;
-        }
-        .rankings-float:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-        .rankings-float:active { transform: scale(0.92); }
-
         /* ── Stats Modal ── */
         .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; }
         .stat-row + .stat-row { border-top: 1px solid rgba(60,60,67,0.06); }
@@ -291,9 +272,11 @@
     <div id="room-header" class="glass-strong sticky top-3 z-40 mx-3 mt-3 rounded-2xl px-4 py-3 flex justify-between items-center">
         <div>
             <div class="flex items-center gap-2">
-                <h1 class="text-lg font-black text-gray-800">房间 <span id="display-room-id" class="text-emerald-600" th:text="${roomId}"></span></h1>
+                <h1 class="text-lg font-black text-gray-800">房间 <span id="display-room-id" class="text-[#007AFF]" th:text="${roomId}"></span></h1>
             </div>
-            <div class="text-xs text-gray-400 font-medium mt-0.5" id="player-count">0 人在线</div>
+            <div class="text-xs text-gray-400 font-medium mt-0.5 flex items-center gap-2" id="player-count">0 人在线
+                <a href="/rankings" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/60 text-[10px] font-semibold text-[#007AFF] hover:bg-white transition-all"><i class="fas fa-layer-group"></i>牌型</a>
+            </div>
         </div>
         <div class="dropdown" id="top-dropdown" style="position:relative;">
             <button onclick="toggleDropdown()" class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-all active:scale-90">
@@ -304,7 +287,7 @@
                 <button onclick="hideDropdown();showBorrowModal()" class="dropdown-item"><i class="fas fa-hand-holding-usd text-purple-500"></i> 借贷中心</button>
                 <button onclick="hideDropdown();showHistoryModal()" class="dropdown-item"><i class="fas fa-history text-gray-500"></i> 操作历史</button>
                 <div class="dropdown-divider"></div>
-                <button onclick="hideDropdown();leaveRoom()" class="dropdown-item"><i class="fas fa-sign-out-alt text-gray-500"></i> 离开房间</button>
+                <button onclick="hideDropdown();tempLeaveRoom()" class="dropdown-item"><i class="fas fa-sign-out-alt text-gray-500"></i> 暂离房间</button>
             </div>
         </div>
     </div>
@@ -397,11 +380,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Floating Hand Rankings Button -->
-    <a href="/rankings" target="_blank" class="rankings-float" title="牌型大小参考">
-        <i class="fas fa-layer-group"></i>
-    </a>
 
     <!-- Transfer Modal -->
     <div id="transfer-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('transfer-modal')">
@@ -731,7 +709,7 @@
             showToast('已撤回本轮下注', 'info');
         }
 
-        function leaveRoom() {
+        function tempLeaveRoom() {
             window.location.href = '/';
         }
 

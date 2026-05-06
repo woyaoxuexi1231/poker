@@ -21,78 +21,79 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 30%, #fefce8 60%, #fce7f3 100%);
-            background-size: 400% 400%;
-            animation: gradientShift 15s ease infinite;
-            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(180deg, #f2f5fa 0%, #e6ecf4 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             padding: 1.5rem;
             padding-bottom: 6rem;
-        }
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            -webkit-font-smoothing: antialiased;
         }
         .glass {
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+            background: rgba(255,255,255,0.68);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
         }
         .glass-strong {
-            background: rgba(255, 255, 255, 0.82);
-            backdrop-filter: blur(32px);
-            -webkit-backdrop-filter: blur(32px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255,255,255,0.6);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
         }
         .input-glass {
-            background: rgba(255, 255, 255, 0.5);
-            border: 1.5px solid rgba(255, 255, 255, 0.6);
-            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.5);
+            border: 1.5px solid rgba(60,60,67,0.1);
+            transition: all 0.2s ease;
             outline: none;
             font-weight: 500;
         }
         .input-glass:focus {
-            background: rgba(255, 255, 255, 0.8);
-            border-color: #10b981;
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+            background: rgba(255,255,255,0.8);
+            border-color: #007AFF;
+            box-shadow: 0 0 0 4px rgba(0,122,255,0.12);
         }
         .btn-primary {
-            background: linear-gradient(135deg, #10b981, #059669);
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #007AFF;
+            box-shadow: 0 4px 16px rgba(0,122,255,0.25);
+            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
             color: white;
             font-weight: 700;
             border: none;
             cursor: pointer;
         }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); }
-        .btn-secondary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            color: white; font-weight: 700; border: none; cursor: pointer;
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(0,122,255,0.35);
         }
-        .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4); }
-        .card-enter { animation: cardFadeIn 0.6s ease-out both; }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.9);
+            border: 1.5px solid rgba(60,60,67,0.12);
+            color: #1c1c1e;
+            font-weight: 700;
+            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+            cursor: pointer;
+        }
+        .btn-secondary:hover { background: white; transform: translateY(-1px); }
+        .btn-secondary:active { transform: scale(0.97); }
+        .card-enter { animation: cardFadeIn 0.5s cubic-bezier(0.16,1,0.3,1) both; }
         @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .section-title {
-            font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.05em; color: #6b7280;
+            font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #8e8e93;
             padding-bottom: 0.75rem; margin-bottom: 1.25rem;
-            border-bottom: 2px solid rgba(229, 231, 235, 0.5);
+            border-bottom: 1px solid rgba(60,60,67,0.08);
         }
         .room-card {
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
         }
         .room-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         }
     </style>
 </head>
@@ -100,7 +101,7 @@
     <div class="glass-strong sticky top-3 z-40 rounded-2xl px-5 py-3 mb-6 flex justify-between items-center">
         <div>
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-lg" style="background:linear-gradient(135deg,#10b981,#059669);">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-sm" style="background:rgba(255,255,255,0.85);">
                     <span th:text="${avatar != null ? avatar : '🦁'}" style="line-height:1;"></span>
                 </div>
                 <div>
@@ -120,7 +121,7 @@
 
     <!-- Create/Join Room -->
     <div class="glass rounded-2xl p-5 mb-6 card-enter">
-        <div class="section-title flex items-center gap-2"><i class="fas fa-dice text-emerald-500 text-xs"></i> 房间操作</div>
+        <div class="section-title flex items-center gap-2"><i class="fas fa-dice text-[#007AFF] text-xs"></i> 房间操作</div>
         <div class="space-y-3">
             <form action="/room/create" method="post" class="flex gap-2">
                 <button type="submit" class="btn-primary flex-1 py-3 rounded-xl text-sm">
@@ -138,7 +139,7 @@
 
     <!-- My Rooms -->
     <div class="glass rounded-2xl p-5 mb-6 card-enter">
-        <div class="section-title flex items-center gap-2"><i class="fas fa-door-open text-blue-500 text-xs"></i> 我的房间</div>
+        <div class="section-title flex items-center gap-2"><i class="fas fa-door-open text-[#007AFF] text-xs"></i> 我的房间</div>
         <div th:if="${#lists.isEmpty(myRooms)}" class="text-center py-8">
             <i class="fas fa-cube text-gray-300 text-3xl mb-3"></i>
             <p class="text-sm text-gray-400 font-medium">还没有加入任何房间</p>
@@ -148,15 +149,15 @@
             <a th:each="room : ${myRooms}" th:href="@{'/room/' + ${room.roomId}}"
                class="room-card glass-strong rounded-xl p-4 flex items-center justify-between cursor-pointer block no-underline">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-lg">
+                    <div class="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center text-gray-500 text-sm shadow-sm">
                         <i class="fas fa-door-open"></i>
                     </div>
                     <div>
                         <div class="font-bold text-gray-800" th:text="'房间 ' + ${room.roomId}"></div>
                         <div class="text-xs text-gray-400">
                             <span th:text="${room.playerCount} + ' 人在线'"></span>
-                            <span th:if="${room.game != null and !room.game.isFinished}" class="ml-2 text-emerald-500">游戏中</span>
-                            <span th:if="${room.game != null and room.game.isFinished}" class="ml-2 text-amber-500">等待中</span>
+                            <span th:if="${room.game != null and !room.game.isFinished}" class="ml-2 text-[#007AFF]">游戏中</span>
+                            <span th:if="${room.game != null and room.game.isFinished}" class="ml-2 text-[#ff9500]">等待中</span>
                         </div>
                     </div>
                 </div>
@@ -167,7 +168,7 @@
 
     <!-- Available Rooms -->
     <div class="glass rounded-2xl p-5 card-enter">
-        <div class="section-title flex items-center gap-2"><i class="fas fa-list text-purple-500 text-xs"></i> 可加入的房间</div>
+        <div class="section-title flex items-center gap-2"><i class="fas fa-list text-[#007AFF] text-xs"></i> 可加入的房间</div>
         <div th:if="${#lists.isEmpty(availableRooms)}" class="text-center py-8">
             <i class="fas fa-check-circle text-green-300 text-3xl mb-3"></i>
             <p class="text-sm text-gray-400 font-medium">没有可加入的房间</p>
@@ -178,7 +179,7 @@
                 <button type="submit"
                    class="room-card glass-strong rounded-xl p-4 flex items-center justify-between cursor-pointer w-full text-left">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-lg">
+                        <div class="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center text-gray-500 text-sm shadow-sm">
                             <i class="fas fa-hashtag"></i>
                         </div>
                         <div>
@@ -189,14 +190,14 @@
                             </div>
                         </div>
                     </div>
-                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg">加入</span>
+                    <span class="text-xs font-bold text-white bg-[#007AFF] px-3 py-1.5 rounded-lg shadow-sm">加入</span>
                 </button>
             </form>
         </div>
     </div>
 
     <div class="fixed bottom-6 left-0 right-0 text-center z-10">
-        <a href="/rankings" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-gray-500 hover:text-emerald-600 bg-white/40 backdrop-blur-sm hover:bg-white/60 transition-all">
+        <a href="/rankings" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-gray-400 hover:text-[#007AFF] bg-white/40 backdrop-blur-sm hover:bg-white/60 transition-all">
             <i class="fas fa-book"></i> 牌型大小参考
         </a>
     </div>
