@@ -76,6 +76,12 @@ public class BettingService {
         if (amount <= 0) return;
 
         int newTotal = gp.getPendingBet() + amount;
+        if (rp.getBalance() < newTotal) {
+            log.warn("🚫 余额不足：玩家 {} 余额 {}，待确认下注 {} + 新增 {} = {}",
+                    user.getUsername(), rp.getBalance(), gp.getPendingBet(), amount, newTotal);
+            return;
+        }
+
         int phaseCap = getPhaseCap(game);
         if (phaseCap > 0 && (gp.getCurrentRoundBet() + newTotal) > phaseCap) {
             log.warn("⚠️ 超过当前阶段上限: 当前{} + 新{} = {} > 上限{}",
@@ -102,6 +108,12 @@ public class BettingService {
         if (gp == null || gp.getIsFolded() || gp.getIsBetConfirmed()) return;
 
         if (amount < 0) amount = 0;
+
+        if (rp.getBalance() < amount) {
+            log.warn("🚫 余额不足：玩家 {} 余额 {}，设置待确认下注 {}",
+                    user.getUsername(), rp.getBalance(), amount);
+            return;
+        }
 
         int phaseCap = getPhaseCap(game);
         if (phaseCap > 0 && (gp.getCurrentRoundBet() + amount) > phaseCap) {
