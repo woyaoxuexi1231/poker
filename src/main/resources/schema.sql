@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS `poker` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 USE `poker`;
 
-CREATE TABLE IF NOT EXISTS `user`
+CREATE TABLE IF NOT EXISTS `poker_user`
 (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT,
     `username`     VARCHAR(50)  NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `user`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `persistent_logins`
+CREATE TABLE IF NOT EXISTS `poker_persistent_logins`
 (
     `username`  VARCHAR(64) NOT NULL,
     `series`    VARCHAR(64) NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `persistent_logins`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `room`
+CREATE TABLE IF NOT EXISTS `poker_room`
 (
     `room_id`      VARCHAR(6) NOT NULL,
     `created_by`   BIGINT     NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `room`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `room_player`
+CREATE TABLE IF NOT EXISTS `poker_room_player`
 (
     `id`             BIGINT     NOT NULL AUTO_INCREMENT,
     `room_id`        VARCHAR(6) NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS `room_player`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `game`
+CREATE TABLE IF NOT EXISTS `poker_game`
 (
     `id`                  BIGINT     NOT NULL AUTO_INCREMENT,
     `room_id`             VARCHAR(6) NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS `game`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `game_player`
+CREATE TABLE IF NOT EXISTS `poker_game_player`
 (
     `id`                BIGINT     NOT NULL AUTO_INCREMENT,
     `game_id`           BIGINT     NOT NULL,
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS `game_player`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `action_log`
+CREATE TABLE IF NOT EXISTS `poker_action_log`
 (
     `id`           BIGINT      NOT NULL AUTO_INCREMENT,
     `game_id`      BIGINT      NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `action_log`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `transfer_log`
+CREATE TABLE IF NOT EXISTS `poker_transfer_log`
 (
     `id`           BIGINT     NOT NULL AUTO_INCREMENT,
     `room_id`      VARCHAR(6) NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `transfer_log`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `borrow_log`
+CREATE TABLE IF NOT EXISTS `poker_borrow_log`
 (
     `id`          BIGINT     NOT NULL AUTO_INCREMENT,
     `room_id`     VARCHAR(6) NOT NULL,
