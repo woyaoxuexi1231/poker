@@ -117,15 +117,13 @@ public class AuthController {
         if (roomDTO == null) {
             return "redirect:/";
         }
-        // Don't auto-join dissolved rooms
-        if (!"DISSOLVED".equals(roomDTO.getStatus())) {
-            // 尝试加入房间（如果用户已在房间中，RoomService 会跳过密码验证）
-            try {
-                roomService.joinRoom(roomId, user.getId(), null);
-            } catch (Exception e) {
-                // 房间有密码且用户未加入过，跳转到主页
-                return "redirect:/";
-            }
+        // 已解散的房间不允许进入
+        if ("DISSOLVED".equals(roomDTO.getStatus())) {
+            return "redirect:/";
+        }
+        // 检查玩家是否是房间的活跃成员（不再调用 joinRoom 避免重新激活已退出的玩家）
+        if (!roomService.isPlayerActive(roomId, user.getId())) {
+            return "redirect:/";
         }
         model.addAttribute("roomId", roomId);
         model.addAttribute("userId", user.getId());

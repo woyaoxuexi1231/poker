@@ -572,6 +572,8 @@
         }
 
         // ── Render ──
+        let previousPlayerIds = [];
+        let previousPlayers = [];
         function renderRoom() {
             if (!roomData) return;
             const container = document.getElementById('players-container');
@@ -579,6 +581,24 @@
             const actionBar = document.getElementById('action-bar');
             const betSection = document.getElementById('bet-section');
             const transferSelect = document.getElementById('transfer-to');
+
+            // 检测玩家变化并通知
+            const currentPlayerIds = (roomData.players || []).map(p => p.userId);
+            if (previousPlayerIds.length > 0) {
+                const left = previousPlayerIds.filter(id => !currentPlayerIds.includes(id));
+                const joined = currentPlayerIds.filter(id => !previousPlayerIds.includes(id));
+                left.forEach(id => {
+                    if (id === myUserId) return;
+                    const prev = previousPlayers ? previousPlayers.find(p => p.userId === id) : null;
+                    showToast((prev ? prev.nickname : '玩家') + ' 退出了房间', 'info');
+                });
+                joined.forEach(id => {
+                    const curr = (roomData.players || []).find(p => p.userId === id);
+                    if (curr && curr.userId !== myUserId) showToast(curr.nickname + ' 加入了房间', 'info');
+                });
+            }
+            previousPlayers = [...(roomData.players || [])];
+            previousPlayerIds = currentPlayerIds;
 
             document.getElementById('player-count').innerText = (roomData.players || []).length + ' 人在线';
 

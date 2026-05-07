@@ -36,7 +36,8 @@ public class RoomQueryService {
 
     public List<RoomDTO> getMyRooms(Long userId) {
         List<RoomPlayer> myRps = roomPlayerMapper.selectList(new LambdaQueryWrapper<RoomPlayer>()
-                .eq(RoomPlayer::getUserId, userId));
+                .eq(RoomPlayer::getUserId, userId)
+                .eq(RoomPlayer::getIsActive, true));
         return myRps.stream()
                 .map(rp -> buildRoomDTO(rp.getRoomId()))
                 .filter(Objects::nonNull)
@@ -44,8 +45,10 @@ public class RoomQueryService {
     }
 
     public List<RoomDTO> getAvailableRooms(Long userId) {
+        // 只排除玩家当前活跃的房间，已退出的房间应该出现在可用列表中
         List<String> myRoomIds = roomPlayerMapper.selectList(new LambdaQueryWrapper<RoomPlayer>()
-                        .eq(RoomPlayer::getUserId, userId))
+                        .eq(RoomPlayer::getUserId, userId)
+                        .eq(RoomPlayer::getIsActive, true))
                 .stream().map(RoomPlayer::getRoomId).collect(Collectors.toList());
 
         return roomMapper.selectList(new LambdaQueryWrapper<Room>()
@@ -131,8 +134,9 @@ public class RoomQueryService {
         dto.setCreatedByNickname(creator != null ? creator.getNickname() : "");
 
         List<RoomPlayer> roomPlayers = roomPlayerMapper.selectList(new LambdaQueryWrapper<RoomPlayer>()
-                .eq(RoomPlayer::getRoomId, roomId));
-        dto.setPlayerCount((int) roomPlayers.stream().filter(RoomPlayer::getIsActive).count());
+                .eq(RoomPlayer::getRoomId, roomId)
+                .eq(RoomPlayer::getIsActive, true));
+        dto.setPlayerCount(roomPlayers.size());
 
         Game game = getCurrentGame(roomId);
         if (game != null) {

@@ -49,6 +49,14 @@ public class RoomService {
         return roomId;
     }
 
+    public boolean isPlayerActive(String roomId, Long userId) {
+        RoomPlayer rp = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
+                .eq(RoomPlayer::getRoomId, roomId)
+                .eq(RoomPlayer::getUserId, userId)
+                .eq(RoomPlayer::getIsActive, true));
+        return rp != null;
+    }
+
     public void joinRoom(String roomId, Long userId, String password) {
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
@@ -59,21 +67,13 @@ public class RoomService {
                 .eq(RoomPlayer::getRoomId, roomId)
                 .eq(RoomPlayer::getUserId, userId));
         
-        // 如果用户已经在房间中，直接返回（不需要验证密码）
-        if (existing != null) {
-            if (!existing.getIsActive()) {
-                existing.setIsActive(true);
-                roomPlayerMapper.updateById(existing);
-                Game game = getCurrentGame(roomId);
-                if (game != null && !game.getIsFinished()) {
-                    bettingService.addPlayerToGame(game.getId(), existing.getId());
-                }
-            }
+        // 如果用户当前是活跃成员（刷新页面等），直接返回
+        if (existing != null && existing.getIsActive()) {
             roomQueryService.broadcastRoom(roomId);
             return;
         }
 
-        // 新用户加入，需要验证密码
+        // 非活跃成员或新用户，都需要验证密码
         if (room.getPassword() != null && !room.getPassword().isEmpty()) {
             if (password == null || password.isEmpty()) {
                 throw new RuntimeException("该房间需要密码才能加入");
@@ -81,6 +81,18 @@ public class RoomService {
             if (!room.getPassword().equals(password)) {
                 throw new RuntimeException("房间密码错误");
             }
+        }
+
+        // 曾经在房间中但已退出的用户，重新激活
+        if (existing != null) {
+            existing.setIsActive(true);
+            roomPlayerMapper.updateById(existing);
+            Game game = getCurrentGame(roomId);
+            if (game != null && !game.getIsFinished()) {
+                bettingService.addPlayerToGame(game.getId(), existing.getId());
+            }
+            roomQueryService.broadcastRoom(roomId);
+            return;
         }
 
         // 创建新的房间玩家记录
