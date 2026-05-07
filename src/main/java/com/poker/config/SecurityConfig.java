@@ -1,5 +1,6 @@
 package com.poker.config;
 
+import com.poker.repository.CustomPersistentTokenRepository;
 import com.poker.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -12,9 +13,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
-import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
-
-import javax.sql.DataSource;
 
 @Configuration
 @EnableWebSecurity
@@ -22,7 +20,7 @@ import javax.sql.DataSource;
 public class SecurityConfig {
 
     private final UserService userService;
-    private final DataSource dataSource;
+    private final CustomPersistentTokenRepository customPersistentTokenRepository;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -31,10 +29,7 @@ public class SecurityConfig {
 
     @Bean
     public PersistentTokenRepository persistentTokenRepository() {
-        JdbcTokenRepositoryImpl repo = new JdbcTokenRepositoryImpl();
-        repo.setDataSource(dataSource);
-        repo.setCreateTableOnStartup(false);
-        return repo;
+        return customPersistentTokenRepository;
     }
 
     @Bean

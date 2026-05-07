@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
-@TableName("game_player")
+@TableName("poker_game_player")
 public class GamePlayer {
     @TableId(type = IdType.AUTO)
     private Long id;

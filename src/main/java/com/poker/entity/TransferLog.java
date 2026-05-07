@@ -7,7 +7,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("transfer_log")
+@TableName("poker_transfer_log")
 public class TransferLog {
     @TableId(type = IdType.AUTO)
     private Long id;

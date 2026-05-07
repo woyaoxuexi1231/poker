@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("room")
+@TableName("poker_room")
 public class Room {
     @TableId
     private String roomId;

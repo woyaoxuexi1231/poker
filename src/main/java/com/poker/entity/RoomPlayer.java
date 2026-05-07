@@ -8,7 +8,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("room_player")
+@TableName("poker_room_player")
 public class RoomPlayer {
     @TableId(type = IdType.AUTO)
     private Long id;

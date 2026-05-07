@@ -7,7 +7,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("borrow_log")
+@TableName("poker_borrow_log")
 public class BorrowLog {
     @TableId(type = IdType.AUTO)
     private Long id;
