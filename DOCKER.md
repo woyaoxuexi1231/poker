@@ -3,7 +3,7 @@
 ## 📦 项目信息
 
 - **项目名称**: Poker Tracker (德扑计分器)
-- **默认端口**: 8080
+- **默认端口**: 8084
 - **Context-Path**: `/poker`
 - **JAR文件**: `poker-tracker-1.0.0-SNAPSHOT.jar`
 
@@ -36,8 +36,8 @@ HOST_PORT=9090 IMAGE_NAME=poker:v1 bash run.sh
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| `HOST_PORT` | 8080 | 宿主机映射端口 |
-| `CONTAINER_PORT` | 8080 | 容器内部端口 |
+| `HOST_PORT` | 8084 | 宿主机映射端口 |
+| `CONTAINER_PORT` | 8084 | 容器内部端口 |
 | `IMAGE_NAME` | poker-tracker:latest | Docker镜像名称 |
 | `CONTAINER_NAME` | poker-tracker | 容器名称 |
 | `JAR_FILE` | 自动查找 | JAR文件路径 |
@@ -52,7 +52,7 @@ HOST_PORT=9090 IMAGE_NAME=poker:v1 bash run.sh
 bash run.sh
 ```
 
-访问地址: `http://localhost:8080/poker/`
+访问地址: `http://localhost:8084/poker/`
 
 ### 示例2: 自定义端口
 
@@ -93,7 +93,7 @@ docker ps | grep poker-tracker
 
 ```nginx
 location /poker {
-    proxy_pass http://127.0.0.1:8080;
+    proxy_pass http://127.0.0.1:8084;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
