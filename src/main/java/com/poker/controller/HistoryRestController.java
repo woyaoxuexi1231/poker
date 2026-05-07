@@ -2,6 +2,7 @@ package com.poker.controller;
 
 import com.poker.dto.ActionLogDTO;
 import com.poker.dto.PlayerGameDTO;
+import com.poker.dto.PlayerOverallStatsDTO;
 import com.poker.service.RoomQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,5 +30,10 @@ public class HistoryRestController {
     @GetMapping("/room/{roomId}/player/{userId}/games")
     public List<PlayerGameDTO> getPlayerGames(@PathVariable String roomId, @PathVariable Long userId) {
         return roomQueryService.getPlayerGames(roomId, userId);
+    }
+
+    @GetMapping("/player/{userId}/overall-stats")
+    public PlayerOverallStatsDTO getPlayerOverallStats(@PathVariable Long userId) {
+        return roomQueryService.getPlayerOverallStats(userId);
     }
 }

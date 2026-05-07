@@ -348,8 +348,12 @@
                 </div>
             </div>
             <div class="flex items-center justify-between mt-2 pt-2.5 border-t border-slate-100 text-sm font-black" id="stats-total-row">
-                <span class="text-slate-500 uppercase">总计</span>
+                <span class="text-slate-500 uppercase">本房间</span>
                 <span id="stats-total">0</span>
+            </div>
+            <div class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-dashed border-slate-100 text-xs" id="stats-overall-row">
+                <span class="text-slate-400">跨房间总战绩</span>
+                <span id="stats-overall" class="font-bold text-slate-400">-</span>
             </div>
         </div>
     </div>
@@ -876,8 +880,11 @@
             document.getElementById('stats-player-name').textContent = player ? player.nickname : '玩家';
             document.getElementById('stats-list-container').innerHTML = '<div class="text-slate-400 text-center py-8 text-xs font-bold">加载中...</div>';
             document.getElementById('stats-total').textContent = '-';
+            document.getElementById('stats-overall').textContent = '-';
+            document.getElementById('stats-overall').className = 'font-bold text-slate-400';
             document.getElementById('player-stats-modal').classList.add('show');
 
+            // 加载当前房间战绩
             fetch(contextPath + 'api/room/' + roomId + '/player/' + userId + '/games')
                 .then(res => res.json())
                 .then(games => {
@@ -903,6 +910,17 @@
                     document.getElementById('stats-total').className = totalResult > 0 ? 'stat-win' : (totalResult < 0 ? 'stat-loss' : 'text-slate-400');
                 })
                 .catch(() => { document.getElementById('stats-list-container').innerHTML = '<div class="text-rose-400 text-center py-8 text-xs font-bold">加载失败</div>'; });
+
+            // 加载跨房间总战绩
+            fetch(contextPath + 'api/player/' + userId + '/overall-stats')
+                .then(res => res.json())
+                .then(stats => {
+                    const r = stats.totalResult || 0;
+                    const text = (r > 0 ? '+' : '') + r + ' (' + stats.totalGames + '局/' + stats.totalRooms + '房)';
+                    document.getElementById('stats-overall').textContent = text;
+                    document.getElementById('stats-overall').className = 'font-bold ' + (r > 0 ? 'stat-win' : (r < 0 ? 'stat-loss' : 'text-slate-400'));
+                })
+                .catch(() => { document.getElementById('stats-overall').textContent = '-'; });
         }
 
         let currentHistoryPage = 1;

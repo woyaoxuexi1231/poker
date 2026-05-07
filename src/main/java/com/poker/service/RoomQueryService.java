@@ -120,6 +120,42 @@ public class RoomQueryService {
         return result;
     }
 
+    public PlayerOverallStatsDTO getPlayerOverallStats(Long userId) {
+        List<RoomPlayer> allRps = roomPlayerMapper.selectList(new LambdaQueryWrapper<RoomPlayer>()
+                .eq(RoomPlayer::getUserId, userId));
+        if (allRps.isEmpty()) return new PlayerOverallStatsDTO();
+
+        int totalGames = 0, totalResult = 0;
+        Set<String> roomIds = new HashSet<>();
+
+        for (RoomPlayer rp : allRps) {
+            roomIds.add(rp.getRoomId());
+            List<Game> games = gameMapper.selectList(new LambdaQueryWrapper<Game>()
+                    .eq(Game::getRoomId, rp.getRoomId())
+                    .eq(Game::getIsFinished, true));
+
+            for (Game game : games) {
+                GamePlayer gp = getGamePlayerByRoomPlayer(game.getId(), rp.getId());
+                if (gp == null) continue;
+                totalGames++;
+
+                ActionLog winLog = actionLogMapper.selectOne(new LambdaQueryWrapper<ActionLog>()
+                        .eq(ActionLog::getGameId, game.getId())
+                        .eq(ActionLog::getUserId, userId)
+                        .eq(ActionLog::getActionType, ActionType.WIN.name())
+                        .last("LIMIT 1"));
+                int won = winLog != null ? winLog.getAmount() : 0;
+                totalResult += won - gp.getTotalBet();
+            }
+        }
+
+        PlayerOverallStatsDTO dto = new PlayerOverallStatsDTO();
+        dto.setTotalGames(totalGames);
+        dto.setTotalResult(totalResult);
+        dto.setTotalRooms(roomIds.size());
+        return dto;
+    }
+
     private RoomDTO buildRoomDTO(String roomId) {
         Room room = roomMapper.selectById(roomId);
         if (room == null) return null;
