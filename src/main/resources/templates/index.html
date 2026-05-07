@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -199,7 +198,9 @@
         </div>
         <div th:if="${!#lists.isEmpty(availableRooms)}" class="space-y-3">
             <div th:each="room : ${availableRooms}" class="glass-card rounded-2xl p-4 flex items-center justify-between group cursor-pointer"
-                 th:onclick="|showJoinModal('${room.roomId}', ${room.hasPassword})|">
+                 th:data-room-id="${room.roomId}"
+                 th:data-has-password="${room.hasPassword}"
+                 onclick="showJoinModal(this.dataset.roomId, this.dataset.hasPassword === 'true')">
                 <div class="flex items-center gap-4 text-left">
                     <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                         <i class="fas fa-hashtag text-xl"></i>

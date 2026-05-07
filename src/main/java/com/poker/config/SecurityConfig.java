@@ -66,9 +66,7 @@ public class SecurityConfig {
                 .invalidateHttpSession(true)
                 .permitAll()
             )
-            .csrf(csrf -> csrf.disable())
-            // 确保重定向使用相对路径
-            .requestCache(cache -> cache.disable());
+            .csrf(csrf -> csrf.disable());
         return http.build();
     }
 }
