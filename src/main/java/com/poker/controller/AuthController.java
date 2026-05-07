@@ -82,10 +82,12 @@ public class AuthController {
     }
 
     @PostMapping("/room/create")
-    public String createRoom(Authentication auth, RedirectAttributes redirectAttributes) {
+    public String createRoom(@RequestParam(required = false) String password,
+                            Authentication auth, 
+                            RedirectAttributes redirectAttributes) {
         try {
             User user = userService.findByUsername(auth.getName());
-            String roomId = roomService.createRoom(user.getId());
+            String roomId = roomService.createRoom(user.getId(), password);
             return "redirect:/room/" + roomId;
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -95,11 +97,12 @@ public class AuthController {
 
     @PostMapping("/room/join")
     public String joinRoom(@RequestParam String roomId,
+                          @RequestParam(required = false) String password,
                            Authentication auth,
                            RedirectAttributes redirectAttributes) {
         try {
             User user = userService.findByUsername(auth.getName());
-            roomService.joinRoom(roomId, user.getId());
+            roomService.joinRoom(roomId, user.getId(), password);
             return "redirect:/room/" + roomId;
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -116,7 +119,13 @@ public class AuthController {
         }
         // Don't auto-join dissolved rooms
         if (!"DISSOLVED".equals(roomDTO.getStatus())) {
-            roomService.joinRoom(roomId, user.getId());
+            // 尝试加入房间（如果用户已在房间中，RoomService 会跳过密码验证）
+            try {
+                roomService.joinRoom(roomId, user.getId(), null);
+            } catch (Exception e) {
+                // 房间有密码且用户未加入过，跳转到主页
+                return "redirect:/";
+            }
         }
         model.addAttribute("roomId", roomId);
         model.addAttribute("userId", user.getId());

@@ -6,6 +6,7 @@ import com.poker.dto.TransferRequest;
 import com.poker.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 
@@ -22,8 +23,12 @@ public class WsRoomController {
     private final RoomLockManager roomLockManager;
 
     @MessageMapping("/room/{roomId}/join")
-    public void joinRoom(@DestinationVariable String roomId, Principal principal) {
+    public void joinRoom(@DestinationVariable String roomId, 
+                        @Header(value = "password", required = false) String password,
+                        Principal principal) {
         if (principal != null) {
+            // WebSocket join 不验证密码（HTTP /room/join 已经验证过）
+            // 这里只是广播房间状态，让客户端订阅消息
             roomQueryService.broadcastRoom(roomId);
         }
     }

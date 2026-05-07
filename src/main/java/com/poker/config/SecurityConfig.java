@@ -61,10 +61,14 @@ public class SecurityConfig {
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessUrl("/login?logout")
+                .logoutSuccessUrl("/login?logout")  // 相对路径，Spring 会自动加上 context-path
+                .deleteCookies("JSESSIONID")
+                .invalidateHttpSession(true)
                 .permitAll()
             )
-            .csrf(csrf -> csrf.disable());
+            .csrf(csrf -> csrf.disable())
+            // 确保重定向使用相对路径
+            .requestCache(cache -> cache.disable());
         return http.build();
     }
 }

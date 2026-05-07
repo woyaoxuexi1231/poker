@@ -138,12 +138,18 @@
         <div class="grid grid-cols-1 gap-4">
             <div class="glass-panel rounded-2xl p-5">
                 <form th:action="@{/room/create}" method="post" class="mb-4">
+                    <div class="mb-3">
+                        <input type="password" name="password" placeholder="设置房间密码（可选）" 
+                               class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 text-sm">
+                    </div>
                     <button type="submit" class="btn-primary-glow w-full py-4 rounded-xl text-sm flex items-center justify-center gap-2">
                         <i class="fas fa-plus-circle"></i><span>创建新房间</span>
                     </button>
                 </form>
                 <form th:action="@{/room/join}" method="post" class="flex flex-col sm:flex-row gap-3">
                     <input type="text" name="roomId" required pattern="[0-9]{6}" placeholder="输入房间号" class="input-glass w-full sm:flex-1 px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 text-center font-bold tracking-[0.2em] min-w-0">
+                    <input type="password" name="password" placeholder="房间密码（如有）" 
+                           class="input-glass w-full sm:w-40 px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 text-sm">
                     <button type="submit" class="btn-secondary-glass px-6 py-3.5 rounded-xl text-sm whitespace-nowrap shrink-0">加入</button>
                 </form>
             </div>
@@ -167,7 +173,10 @@
                         <i class="fas fa-door-open text-xl"></i>
                     </div>
                     <div>
-                        <div class="font-bold text-slate-900" th:text="'房间 ' + ${room.roomId}">房间</div>
+                        <div class="font-bold text-slate-900 flex items-center gap-2">
+                            <span th:text="'房间 ' + ${room.roomId}">房间</span>
+                            <i th:if="${room.hasPassword}" class="fas fa-lock text-xs text-amber-500" title="密码保护"></i>
+                        </div>
                         <div class="flex items-center gap-2 mt-0.5">
                             <span class="text-[11px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded" th:text="${room.playerCount} + ' 人'">0 人</span>
                             <span th:if="${room.game != null and !room.game.isFinished}" class="text-[11px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">游戏中</span>
@@ -189,21 +198,22 @@
             <p class="text-xs font-medium tracking-wide">目前没有公开房间</p>
         </div>
         <div th:if="${!#lists.isEmpty(availableRooms)}" class="space-y-3">
-            <form th:each="room : ${availableRooms}" th:action="@{'/room/join'}" method="post">
-                <input type="hidden" name="roomId" th:value="${room.roomId}">
-                <button type="submit" class="glass-card rounded-2xl p-4 flex items-center justify-between w-full group">
-                    <div class="flex items-center gap-4 text-left">
-                        <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                            <i class="fas fa-hashtag text-xl"></i>
-                        </div>
-                        <div>
-                            <div class="font-bold text-slate-900" th:text="'房间 ' + ${room.roomId}">房间</div>
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="'房主: ' + ${room.createdByNickname}">房主</div>
-                        </div>
+            <div th:each="room : ${availableRooms}" class="glass-card rounded-2xl p-4 flex items-center justify-between group cursor-pointer"
+                 th:onclick="|showJoinModal('${room.roomId}', ${room.hasPassword})|">
+                <div class="flex items-center gap-4 text-left">
+                    <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-hashtag text-xl"></i>
                     </div>
-                    <div class="btn-primary-glow px-4 py-2 rounded-lg text-[11px] font-bold">加入</div>
-                </button>
-            </form>
+                    <div>
+                        <div class="font-bold text-slate-900 flex items-center gap-2">
+                            <span th:text="'房间 ' + ${room.roomId}">房间</span>
+                            <i th:if="${room.hasPassword}" class="fas fa-lock text-xs text-amber-500" title="密码保护"></i>
+                        </div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" th:text="'房主: ' + ${room.createdByNickname}">房主</div>
+                    </div>
+                </div>
+                <div class="btn-primary-glow px-4 py-2 rounded-lg text-[11px] font-bold">加入</div>
+            </div>
         </div>
     </section>
 
@@ -307,9 +317,60 @@
         </div>
     </div>
 
+    <!-- 加入房间密码模态框 -->
+    <div id="join-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold text-slate-900 mb-4">加入房间</h3>
+            <form id="join-form" th:action="@{/room/join}" method="post">
+                <input type="hidden" name="roomId" id="join-room-id">
+                <div id="join-password-field" class="mb-4 hidden">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">房间密码</label>
+                    <input type="password" name="password" id="join-password" 
+                           class="input-glass w-full px-4 py-3 rounded-xl text-slate-800 placeholder:text-slate-400"
+                           placeholder="请输入房间密码">
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeJoinModal()" 
+                            class="flex-1 py-3 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                        取消
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-blue-500 hover:bg-blue-600 transition-colors">
+                        加入
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         function showRankingModal() { document.getElementById('ranking-modal').classList.add('show'); }
         function closeModal() { document.getElementById('ranking-modal').classList.remove('show'); }
+        
+        // 加入房间模态框
+        function showJoinModal(roomId, hasPassword) {
+            document.getElementById('join-room-id').value = roomId;
+            const passwordField = document.getElementById('join-password-field');
+            const passwordInput = document.getElementById('join-password');
+            
+            if (hasPassword) {
+                passwordField.classList.remove('hidden');
+                passwordInput.required = true;
+                passwordInput.focus();
+            } else {
+                passwordField.classList.add('hidden');
+                passwordInput.required = false;
+            }
+            
+            document.getElementById('join-modal').classList.remove('hidden');
+            document.getElementById('join-modal').classList.add('flex');
+        }
+        
+        function closeJoinModal() {
+            document.getElementById('join-modal').classList.add('hidden');
+            document.getElementById('join-modal').classList.remove('flex');
+            document.getElementById('join-password').value = '';
+        }
     </script>
 </body>
 </html>

@@ -26,13 +26,14 @@ public class RoomService {
     private final BettingService bettingService;
     private final RoomQueryService roomQueryService;
 
-    public String createRoom(Long userId) {
+    public String createRoom(Long userId, String password) {
         String roomId = generateRoomId();
         Room room = new Room();
         room.setRoomId(roomId);
         room.setCreatedBy(userId);
         room.setCreatedTime(LocalDateTime.now());
         room.setStatus("ACTIVE");
+        room.setPassword(password); // 设置密码，可以为 null
         roomMapper.insert(room);
 
         RoomPlayer rp = new RoomPlayer();
@@ -48,14 +49,17 @@ public class RoomService {
         return roomId;
     }
 
-    public void joinRoom(String roomId, Long userId) {
+    public void joinRoom(String roomId, Long userId, String password) {
         Room room = roomMapper.selectById(roomId);
         if (room == null) throw new RuntimeException("房间不存在");
         if ("DISSOLVED".equals(room.getStatus())) throw new RuntimeException("房间已解散");
 
+        // 检查用户是否已经在房间中
         RoomPlayer existing = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
                 .eq(RoomPlayer::getRoomId, roomId)
                 .eq(RoomPlayer::getUserId, userId));
+        
+        // 如果用户已经在房间中，直接返回（不需要验证密码）
         if (existing != null) {
             if (!existing.getIsActive()) {
                 existing.setIsActive(true);
@@ -69,6 +73,17 @@ public class RoomService {
             return;
         }
 
+        // 新用户加入，需要验证密码
+        if (room.getPassword() != null && !room.getPassword().isEmpty()) {
+            if (password == null || password.isEmpty()) {
+                throw new RuntimeException("该房间需要密码才能加入");
+            }
+            if (!room.getPassword().equals(password)) {
+                throw new RuntimeException("房间密码错误");
+            }
+        }
+
+        // 创建新的房间玩家记录
         RoomPlayer rp = new RoomPlayer();
         rp.setRoomId(roomId);
         rp.setUserId(userId);

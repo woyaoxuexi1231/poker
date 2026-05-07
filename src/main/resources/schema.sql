@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `poker_room`
     `created_by`   BIGINT     NOT NULL,
     `created_time` DATETIME   NOT NULL,
     `status`       VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE-活跃 DISSOLVED-已解散',
+    `password`     VARCHAR(50) NULL DEFAULT NULL COMMENT '房间密码，NULL表示无密码',
     PRIMARY KEY (`room_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4

@@ -125,6 +125,7 @@ public class RoomQueryService {
         dto.setRoomId(room.getRoomId());
         dto.setCreatedBy(room.getCreatedBy());
         dto.setStatus(room.getStatus());
+        dto.setHasPassword(room.getPassword() != null && !room.getPassword().isEmpty()); // 设置是否有密码
 
         User creator = userService.findById(room.getCreatedBy());
         dto.setCreatedByNickname(creator != null ? creator.getNickname() : "");
