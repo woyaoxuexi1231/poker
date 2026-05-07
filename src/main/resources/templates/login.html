@@ -84,7 +84,7 @@
             <span th:text="${success}">成功</span>
         </div>
 
-        <form action="/login" method="post" class="space-y-5">
+        <form th:action="@{/login}" method="post" class="space-y-5">
             <div>
                 <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">用户名</label>
                 <div class="relative">
@@ -112,7 +112,7 @@
 
         <div class="mt-8 pt-8 border-t border-slate-100 text-center">
             <span class="text-xs font-bold text-slate-400">没有账号？</span>
-            <a href="/register" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1">立即注册</a>
+            <a th:href="@{/register}" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1">立即注册</a>
         </div>
     </div>
 

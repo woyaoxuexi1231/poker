@@ -104,7 +104,7 @@
             <span th:text="${error}">错误信息</span>
         </div>
 
-        <form action="/register" method="post" class="space-y-5">
+        <form th:action="@{/register}" method="post" class="space-y-5">
             <div>
                 <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">用户名</label>
                 <input type="text" name="username" required placeholder="用户名" class="input-glass w-full px-4 py-3.5 rounded-xl text-slate-800 placeholder:text-slate-400 font-medium">
@@ -136,7 +136,7 @@
 
         <div class="mt-8 pt-8 border-t border-slate-100 text-center">
             <span class="text-xs font-bold text-slate-400">已有账号？</span>
-            <a href="/login" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1">立即登录</a>
+            <a th:href="@{/login}" class="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors ml-1">立即登录</a>
         </div>
     </div>
 

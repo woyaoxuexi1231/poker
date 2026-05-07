@@ -499,6 +499,7 @@
     </div>
 
     <script th:inline="javascript">
+        const contextPath = /*[[@{/}]]*/ '/';
         const roomId = /*[[${roomId}]]*/ '000000';
         const myUserId = /*[[${userId}]]*/ 0;
         const myAvatar = /*[[${avatar}]]*/ '🦁';
@@ -558,7 +559,7 @@
 
         // ── WebSocket ──
         function connect() {
-            const socket = new SockJS('/ws');
+            const socket = new SockJS(contextPath + 'ws');
             stompClient = Stomp.over(socket);
             stompClient.debug = null;
             stompClient.connect({}, function () {
@@ -608,7 +609,7 @@
                         <div class="text-5xl mb-4">🏁</div>
                         <div class="text-xl font-black text-slate-800 mb-2">房间已解散</div>
                         <p class="text-sm font-bold text-slate-400 mb-4">该房间已被房主关闭</p>
-                        <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-[#3b82f6] shadow-md"><i class="fas fa-arrow-left"></i> 返回首页</a>
+                        <a href="javascript:void(0)" onclick="window.location.href=contextPath" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-[#3b82f6] shadow-md"><i class="fas fa-arrow-left"></i> 返回首页</a>
                     </div>`;
                 return;
             }
@@ -790,10 +791,10 @@
             }
             if (confirm('确定要退出房间吗？')) {
                 stompClient.send("/app/room/" + roomId + "/exit", {}, {});
-                setTimeout(() => window.location.href = '/', 500);
+                setTimeout(() => window.location.href = contextPath, 500);
             }
         }
-        function tempLeaveRoom() { window.location.href = '/'; }
+        function tempLeaveRoom() { window.location.href = contextPath; }
         function dissolveRoom() {
             if (confirm('确定要解散房间吗？')) {
                 stompClient.send("/app/room/" + roomId + "/dissolve", {}, {});
@@ -857,7 +858,7 @@
             document.getElementById('stats-total').textContent = '-';
             document.getElementById('player-stats-modal').classList.add('show');
 
-            fetch('/api/room/' + roomId + '/player/' + userId + '/games')
+            fetch(contextPath + 'api/room/' + roomId + '/player/' + userId + '/games')
                 .then(res => res.json())
                 .then(games => {
                     if (!games || games.length === 0) {
@@ -893,7 +894,7 @@
             currentHistoryPage = page;
             pageInfo.innerText = '第 ' + page + ' 页';
             prevBtn.disabled = page <= 1;
-            fetch('/api/room/' + roomId + '/history?page=' + page + '&size=30')
+            fetch(contextPath + 'api/room/' + roomId + '/history?page=' + page + '&size=30')
                 .then(res => res.json())
                 .then(logs => {
                     if (!logs || logs.length === 0) { container.innerHTML = '<div class="text-slate-400 text-center py-8 font-bold">暂无记录</div>'; nextBtn.disabled = true; return; }

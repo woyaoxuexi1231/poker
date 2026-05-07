@@ -1,5 +1,7 @@
 server:
   port: 8080
+  servlet:
+    context-path: /poker
 
 spring:
   application:
@@ -16,9 +18,7 @@ spring:
   thymeleaf:
     cache: false
     mode: HTML
-  messages:
-    basename: messages
-    encoding: UTF-8
+
 
 mybatis-plus:
   configuration:
