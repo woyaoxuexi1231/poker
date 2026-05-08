@@ -188,8 +188,11 @@
     <div id="game-area" class="mx-3 mt-3">
         <!-- Game Info Banner -->
         <div id="game-info" class="glass-panel rounded-2xl p-4 mb-3" style="display:none;">
-            <div class="flex items-center justify-between mb-3 px-1">
-                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em]">对局信息</div>
+            <div class="flex items-center justify-between mb-3 px-1 text-slate-400">
+                <div class="text-[10px] font-extrabold uppercase tracking-[0.2em]">对局信息</div>
+                <a th:href="@{/logout}" onclick="return confirm('确定要退出登录吗？')" class="text-xs hover:text-rose-500 transition-colors">
+                    <i class="fas fa-power-off"></i> 退出登录
+                </a>
             </div>
             <div class="flex items-center justify-around">
                 <div class="text-center">

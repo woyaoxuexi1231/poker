@@ -120,7 +120,7 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a th:href="@{/logout}" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
+            <a th:href="@{/logout}" onclick="return confirm('确定要退出登录吗？')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
                 <i class="fas fa-power-off"></i>
             </a>
         </div>
