@@ -84,7 +84,8 @@
             <span th:text="${success}">成功</span>
         </div>
 
-        <form th:action="@{/login}" method="post" class="space-y-5">
+        <form th:action="@{/login}" method="post" class="space-y-5" id="login-form">
+            <input type="hidden" name="X-Custom-Real-IP" id="client-ip" value="">
             <div>
                 <label class="text-[10px] font-bold text-slate-400 mb-2 block uppercase tracking-wider">用户名</label>
                 <div class="relative">
@@ -116,5 +117,101 @@
         </div>
     </div>
 
+<script>
+        // 存储客户端真实IP
+        let clientIP = '';
+        
+        // 备选IP查询API列表（按优先级分组，并发查询）
+        const IP_API_LIST = [
+            { url: 'https://api.ipify.org?format=json', type: 'json', extract: 'ip', group: 1 },
+            { url: 'https://api64.ipify.org?format=json', type: 'json', extract: 'ip', group: 1 },
+            { url: 'https://ip.seeip.org/json', type: 'json', extract: 'ip', group: 2 },
+            { url: 'https://api.my-ip.io/v2/ip', type: 'json', extract: 'ip', group: 2 },
+            { url: 'https://api.ipify.org', type: 'text', group: 3 },
+            { url: 'https://icanhazip.com', type: 'text', group: 3 },
+            { url: 'https://ifconfig.me/ip', type: 'text', group: 3 },
+            { url: 'https://ifconfig.io/ip', type: 'text', group: 3 }
+        ];
+
+        async function fetchClientIP() {
+            if (clientIP) return clientIP;
+            
+            const createRequest = (api) => {
+                return new Promise((resolve) => {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => {
+                        controller.abort();
+                        resolve({ success: false });
+                    }, 5000);
+                    
+                    fetch(api.url, { 
+                        signal: controller.signal,
+                        headers: { 'Accept': 'application/json, text/plain' },
+                        cache: 'no-cache'
+                    })
+                    .then(async (response) => {
+                        clearTimeout(timeout);
+                        if (!response.ok) {
+                            resolve({ success: false });
+                            return;
+                        }
+                        
+                        let ip = '';
+                        try {
+                            if (api.type === 'json') {
+                                const data = await response.json();
+                                ip = data[api.extract] || '';
+                            } else {
+                                ip = await response.text();
+                                ip = ip.trim();
+                            }
+                            
+                            if (/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip)) {
+                                resolve({ success: true, ip: ip });
+                            } else {
+                                resolve({ success: false });
+                            }
+                        } catch (e) {
+                            resolve({ success: false });
+                        }
+                    })
+                    .catch(() => {
+                        clearTimeout(timeout);
+                        resolve({ success: false });
+                    });
+                });
+            };
+            
+            const groups = [1, 2, 3];
+            for (const group of groups) {
+                const groupApis = IP_API_LIST.filter(api => api.group === group);
+                const results = await Promise.allSettled(groupApis.map(createRequest));
+                
+                for (const result of results) {
+                    if (result.status === 'fulfilled' && result.value.success) {
+                        clientIP = result.value.ip;
+                        document.getElementById('client-ip').value = clientIP;
+                        return clientIP;
+                    }
+                }
+            }
+            
+            clientIP = '';
+            return clientIP;
+        }
+
+        // 页面加载时获取IP
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchClientIP();
+        });
+
+        // 表单提交前确保IP已获取
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            if (!clientIP) {
+                await fetchClientIP();
+            }
+            document.getElementById('client-ip').value = clientIP;
+        });
+    </script>
 </body>
 </html>
