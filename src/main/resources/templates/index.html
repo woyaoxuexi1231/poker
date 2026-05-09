@@ -349,7 +349,39 @@
     <script>
         // 存储客户端真实IP
         let clientIP = '';
-        
+
+        // IP缓存相关常量
+        const IP_CACHE_KEY = 'client_real_ip';
+        const IP_CACHE_TIMESTAMP_KEY = 'client_real_ip_timestamp';
+        const IP_CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
+
+        // 从localStorage获取缓存的IP
+        function getCachedIP() {
+            try {
+                const cachedIP = localStorage.getItem(IP_CACHE_KEY);
+                const cachedTime = localStorage.getItem(IP_CACHE_TIMESTAMP_KEY);
+                if (cachedIP && cachedTime) {
+                    const elapsed = Date.now() - parseInt(cachedTime);
+                    if (elapsed < IP_CACHE_DURATION) {
+                        return cachedIP;
+                    }
+                }
+            } catch (e) {
+                console.warn('读取IP缓存失败:', e);
+            }
+            return null;
+        }
+
+        // 保存IP到localStorage缓存
+        function saveIPToCache(ip) {
+            try {
+                localStorage.setItem(IP_CACHE_KEY, ip);
+                localStorage.setItem(IP_CACHE_TIMESTAMP_KEY, Date.now().toString());
+            } catch (e) {
+                console.warn('保存IP缓存失败:', e);
+            }
+        }
+
         // 备选IP查询API列表（按优先级分组，并发查询）
         const IP_API_LIST = [
             { url: 'https://api.ipify.org?format=json', type: 'json', extract: 'ip', group: 1 },
@@ -363,8 +395,16 @@
         ];
 
         async function fetchClientIP() {
+            // 优先从缓存读取
+            const cachedIP = getCachedIP();
+            if (cachedIP) {
+                clientIP = cachedIP;
+                console.log('📦 使用缓存的客户端IP:', clientIP);
+                return clientIP;
+            }
+
             if (clientIP) return clientIP;
-            
+
             const createRequest = (api) => {
                 return new Promise((resolve) => {
                     const controller = new AbortController();
@@ -372,8 +412,8 @@
                         controller.abort();
                         resolve({ success: false });
                     }, 5000);
-                    
-                    fetch(api.url, { 
+
+                    fetch(api.url, {
                         signal: controller.signal,
                         headers: { 'Accept': 'application/json, text/plain' },
                         cache: 'no-cache'
@@ -384,7 +424,7 @@
                             resolve({ success: false });
                             return;
                         }
-                        
+
                         let ip = '';
                         try {
                             if (api.type === 'json') {
@@ -394,7 +434,7 @@
                                 ip = await response.text();
                                 ip = ip.trim();
                             }
-                            
+
                             if (/^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip)) {
                                 resolve({ success: true, ip: ip });
                             } else {
@@ -410,22 +450,23 @@
                     });
                 });
             };
-            
+
             const groups = [1, 2, 3];
             for (const group of groups) {
                 const groupApis = IP_API_LIST.filter(api => api.group === group);
                 const results = await Promise.allSettled(groupApis.map(createRequest));
-                
+
                 for (const result of results) {
                     if (result.status === 'fulfilled' && result.value.success) {
                         clientIP = result.value.ip;
+                        saveIPToCache(clientIP);
                         document.getElementById('client-ip-create').value = clientIP;
                         document.getElementById('client-ip-join').value = clientIP;
                         return clientIP;
                     }
                 }
             }
-            
+
             clientIP = '';
             return clientIP;
         }
