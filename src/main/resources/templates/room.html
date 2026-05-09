@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <link rel="stylesheet" href="/ip-widget.css">
     <script>
         tailwind.config = {
             theme: {
@@ -511,147 +512,29 @@
         const myUserId = /*[[${userId}]]*/ 0;
         const myAvatar = /*[[${avatar}]]*/ '🦁';
 
-        // 存储客户端真实IP
         let clientIP = '';
+        const IP_CACHE_KEY = 'common_real_ip';
+        const IP_CACHE_TIMESTAMP_KEY = 'common_real_ip_timestamp';
 
-        // IP缓存相关常量
-        const IP_CACHE_KEY = 'client_real_ip';
-        const IP_CACHE_TIMESTAMP_KEY = 'client_real_ip_timestamp';
-        const IP_CACHE_DURATION = 10 * 60 * 1000; // 10分钟缓存
-
-        // 从localStorage获取缓存的IP
         function getCachedIP() {
             try {
                 const cachedIP = localStorage.getItem(IP_CACHE_KEY);
                 const cachedTime = localStorage.getItem(IP_CACHE_TIMESTAMP_KEY);
                 if (cachedIP && cachedTime) {
                     const elapsed = Date.now() - parseInt(cachedTime);
-                    if (elapsed < IP_CACHE_DURATION) {
+                    if (elapsed < 10 * 60 * 1000) {
                         return cachedIP;
                     }
                 }
-            } catch (e) {
-                console.warn('读取IP缓存失败:', e);
-            }
+            } catch (e) {}
             return null;
         }
 
-        // 保存IP到localStorage缓存
-        function saveIPToCache(ip) {
-            try {
-                localStorage.setItem(IP_CACHE_KEY, ip);
-                localStorage.setItem(IP_CACHE_TIMESTAMP_KEY, Date.now().toString());
-            } catch (e) {
-                console.warn('保存IP缓存失败:', e);
+        function getClientIP() {
+            if (!clientIP) {
+                clientIP = getCachedIP() || '';
             }
-        }
-
-        // 备选IP查询API列表（按优先级分组，并发查询）
-        const IP_API_LIST = [
-            // 第一组：优先尝试（JSON格式，响应较快）
-            { url: 'https://api.ipify.org?format=json', type: 'json', extract: 'ip', group: 1 },
-            { url: 'https://api64.ipify.org?format=json', type: 'json', extract: 'ip', group: 1 },
-            // 第二组：备用（JSON格式）
-            { url: 'https://ip.seeip.org/json', type: 'json', extract: 'ip', group: 2 },
-            { url: 'https://api.my-ip.io/v2/ip', type: 'json', extract: 'ip', group: 2 },
-            // 第三组：降级（纯文本格式）
-            { url: 'https://api.ipify.org', type: 'text', group: 3 },
-            { url: 'https://icanhazip.com', type: 'text', group: 3 },
-            { url: 'https://ifconfig.me/ip', type: 'text', group: 3 },
-            { url: 'https://ifconfig.io/ip', type: 'text', group: 3 }
-        ];
-
-        // 获取客户端真实IP（多线程并发查询，任一成功即返回，支持10分钟缓存）
-        async function fetchClientIP() {
-            // 优先从缓存读取
-            const cachedIP = getCachedIP();
-            if (cachedIP) {
-                clientIP = cachedIP;
-                console.log('📦 使用缓存的客户端IP:', clientIP);
-                return clientIP;
-            }
-
-            if (clientIP) return clientIP;
-
-            console.log('🔍 开始并发查询客户端IP...');
-
-            const createRequest = (api) => {
-                return new Promise((resolve) => {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => {
-                        controller.abort();
-                        resolve({ success: false, api: api.url, error: 'timeout' });
-                    }, 5000);
-
-                    fetch(api.url, {
-                        signal: controller.signal,
-                        headers: { 'Accept': 'application/json, text/plain' },
-                        cache: 'no-cache'
-                    })
-                    .then(async (response) => {
-                        clearTimeout(timeout);
-                        if (!response.ok) {
-                            resolve({ success: false, api: api.url, error: 'HTTP ' + response.status });
-                            return;
-                        }
-
-                        let ip = '';
-                        try {
-                            if (api.type === 'json') {
-                                const data = await response.json();
-                                ip = data[api.extract] || '';
-                            } else {
-                                ip = await response.text();
-                                ip = ip.trim();
-                            }
-
-                            if (isValidIP(ip)) {
-                                resolve({ success: true, ip: ip, api: api.url });
-                            } else {
-                                resolve({ success: false, api: api.url, error: 'invalid IP format' });
-                            }
-                        } catch (e) {
-                            resolve({ success: false, api: api.url, error: e.message });
-                        }
-                    })
-                    .catch((error) => {
-                        clearTimeout(timeout);
-                        resolve({ success: false, api: api.url, error: error.message });
-                    });
-                });
-            };
-
-            const groups = [1, 2, 3];
-            for (const group of groups) {
-                const groupApis = IP_API_LIST.filter(api => api.group === group);
-                console.log('📡 第' + group + '组并发查询: ' + groupApis.length + '个API');
-
-                const results = await Promise.allSettled(groupApis.map(createRequest));
-
-                for (const result of results) {
-                    if (result.status === 'fulfilled' && result.value.success) {
-                        clientIP = result.value.ip;
-                        saveIPToCache(clientIP);
-                        console.log('✅ 成功获取客户端IP (' + result.value.api + '): ' + clientIP);
-                        return clientIP;
-                    }
-                }
-
-                console.log('⚠️ 第' + group + '组全部失败，尝试下一组...');
-            }
-
-            console.warn('❌ 所有IP查询API都失败了');
-            clientIP = '';
             return clientIP;
-        }
-
-        // 验证IP地址格式
-        function isValidIP(ip) {
-            if (!ip || typeof ip !== 'string') return false;
-            ip = ip.trim();
-            const ipv4Pattern = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-            const ipv6Pattern = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::$/;
-            return ipv4Pattern.test(ip) || ipv6Pattern.test(ip);
         }
         
         let stompClient = null;
@@ -709,33 +592,29 @@
 
         // ── WebSocket ──
         function connect() {
-            // 先获取客户端真实IP
-            fetchClientIP().then(() => {
-                const socket = new SockJS(contextPath + 'ws');
-                stompClient = Stomp.over(socket);
-                stompClient.debug = null;
-                
-                // 构建连接头，包含真实IP
-                const connectHeaders = {};
-                if (clientIP) {
-                    connectHeaders['X-Custom-Real-IP'] = clientIP;
-                    connectHeaders['X-Real-IP'] = clientIP;
-                }
-                
-                stompClient.connect(connectHeaders, function () {
-                    stompClient.subscribe('/topic/room/' + roomId, function (message) {
-                        const msg = JSON.parse(message.body);
-                        if (msg.event === 'ROOM_UPDATE') { roomData = msg.data; renderRoom(); }
-                    });
-                    
-                    // 发送加入消息时也带上IP头
-                    const sendHeaders = {};
-                    if (clientIP) {
-                        sendHeaders['X-Custom-Real-IP'] = clientIP;
-                        sendHeaders['X-Real-IP'] = clientIP;
-                    }
-                    stompClient.send("/app/room/" + roomId + "/join", sendHeaders, {});
+            const ip = getClientIP();
+            const socket = new SockJS(contextPath + 'ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            
+            const connectHeaders = {};
+            if (ip) {
+                connectHeaders['X-Custom-Real-IP'] = ip;
+                connectHeaders['X-Real-IP'] = ip;
+            }
+            
+            stompClient.connect(connectHeaders, function () {
+                stompClient.subscribe('/topic/room/' + roomId, function (message) {
+                    const msg = JSON.parse(message.body);
+                    if (msg.event === 'ROOM_UPDATE') { roomData = msg.data; renderRoom(); }
                 });
+                
+                const sendHeaders = {};
+                if (ip) {
+                    sendHeaders['X-Custom-Real-IP'] = ip;
+                    sendHeaders['X-Real-IP'] = ip;
+                }
+                stompClient.send("/app/room/" + roomId + "/join", sendHeaders, {});
             });
         }
 
@@ -1115,5 +994,6 @@
 
         window.onload = connect;
     </script>
+    <script src="/ip-widget.js"></script>
 </body>
 </html>
