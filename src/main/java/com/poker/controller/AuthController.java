@@ -1,12 +1,15 @@
 package com.poker.controller;
 
 import com.poker.util.AvatarPreset;
+import com.poker.util.IpUtils;
 import com.poker.dto.RoomDTO;
 import com.poker.entity.User;
 import com.poker.service.RoomService;
 import com.poker.service.RoomQueryService;
 import com.poker.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -19,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class AuthController {
@@ -44,12 +48,15 @@ public class AuthController {
                              @RequestParam String password,
                              @RequestParam String nickname,
                              @RequestParam(defaultValue = "") String avatar,
-                             RedirectAttributes redirectAttributes) {
+                             RedirectAttributes redirectAttributes,
+                             HttpServletRequest request) {
         try {
             if (userService.findByUsername(username) != null) {
                 redirectAttributes.addFlashAttribute("error", "用户名已存在");
                 return "redirect:/register";
             }
+            String clientIp = IpUtils.getClientIp(request);
+            log.info("用户注册 - 用户名: {}, IP: {}", username, clientIp);
             userService.register(username, passwordEncoder.encode(password), nickname, avatar);
             redirectAttributes.addFlashAttribute("success", "注册成功，请登录");
             return "redirect:/login";
