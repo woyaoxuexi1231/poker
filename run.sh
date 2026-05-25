@@ -67,6 +67,9 @@ docker build \
   -t "${IMAGE_NAME}" \
   "${SCRIPT_DIR}"
 
+# 清理构建产生的 dangling 镜像（旧版本 tag 被顶掉后的 <none>:<none>）
+docker image prune -f 2>/dev/null || true
+
 if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
   echo "[INFO] 删除旧容器: ${CONTAINER_NAME}"
   docker rm -f "${CONTAINER_NAME}"
