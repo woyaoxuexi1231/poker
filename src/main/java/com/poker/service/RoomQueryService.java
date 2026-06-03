@@ -64,7 +64,7 @@ public class RoomQueryService {
         List<Game> games = gameMapper.selectList(new LambdaQueryWrapper<Game>()
                 .eq(Game::getRoomId, roomId)
                 .orderByDesc(Game::getId));
-        if (games.isEmpty()) return List.of();
+        if (games.isEmpty()) return Collections.emptyList();
 
         List<Long> gameIds = games.stream().map(Game::getId).collect(Collectors.toList());
         int offset = (page - 1) * size;
@@ -95,7 +95,7 @@ public class RoomQueryService {
         RoomPlayer rp = roomPlayerMapper.selectOne(new LambdaQueryWrapper<RoomPlayer>()
                 .eq(RoomPlayer::getRoomId, roomId)
                 .eq(RoomPlayer::getUserId, userId));
-        if (rp == null) return List.of();
+        if (rp == null) return Collections.emptyList();
 
         List<PlayerGameDTO> result = new ArrayList<>();
         for (Game game : games) {
