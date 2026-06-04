@@ -8,5 +8,5 @@ WORKDIR /app
 #COPY ${JAR_FILE} /app.jar
 COPY target/poker-tracker.jar app.jar
 EXPOSE 8084
-ENTRYPOINT ["sh","-c","java ${JAVA_OPTS:-} -jar /app.jar"]
+ENTRYPOINT ["sh","-c","java ${JAVA_OPTS:-} -jar app.jar"]
 

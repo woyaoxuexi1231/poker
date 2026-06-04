@@ -48,7 +48,7 @@ pipeline {
                     docker run -d \
                       --name ${CONTAINER_NAME} \
                       --restart=unless-stopped \
-                      -p ${APP_PORT}:8080 \
+                      -p ${APP_PORT}:8084 \
                       -e TZ=Asia/Shanghai \
                       ${IMAGE_NAME}:latest
                 """
