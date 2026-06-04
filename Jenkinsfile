@@ -15,8 +15,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '=== 拉取代码 ==='
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/woyaoxuexi1231/poker.git'
             }
         }
 
