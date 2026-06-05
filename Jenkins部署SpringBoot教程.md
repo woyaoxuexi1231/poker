@@ -1,6 +1,6 @@
-# Jenkins 部署 Spring Boot 项目 — Pipeline 流水线教程
+# Jenkins + Docker Registry 部署 Spring Boot 教程
 
-> 架构：Windows Server + Docker Desktop + Jenkins 容器 + TCP API 控制宿主机 Docker
+> 架构：Jenkins 编译打包 → 推送镜像到 Registry → Kubernetes 拉取部署
 
 ---
 
@@ -12,18 +12,34 @@
 2. 勾选 **Expose daemon on tcp://localhost:2375 without TLS**
 3. 点 **Apply & Restart**
 
-验证：
+### 预拉取基础镜像
 
-```bash
-curl http://localhost:2375/containers/json
+Jenkins 通过 TCP 调用宿主机 Docker 引擎，所以镜像缓存在宿主机上。提前拉一次，后续 `docker build` 不再下载：
+
+```powershell
+docker pull eclipse-temurin:8-jre
 ```
 
-能返回数据就说明 TCP API 已开启。
+### 安装 Docker Registry
+
+```powershell
+.\install_registry.ps1
+```
+
+启动后 Registry 运行在 `localhost:5000`。
+
+### 安装 Registry UI（可选，Web 管理界面）
+
+```powershell
+.\install_registry_ui.ps1
+```
+
+打开 `http://localhost:8085`，可以浏览镜像列表、查看 tag、删除旧版本。
 
 ### 启动 Jenkins
 
-```bash
-bash component_install_jenkins_docker.sh
+```powershell
+.\install_jenkins.ps1
 ```
 
 初始化后配置 Tools：**Manage Jenkins → Tools**：
@@ -38,63 +54,51 @@ bash component_install_jenkins_docker.sh
 ## 一、整体架构
 
 ```
-Windows Server
-├── Docker Desktop (引擎)
-│   ├── Jenkins 容器 (8080)
-│   │   ├── Git + Maven
-│   │   ├── JDK8 ← 编译你的项目
-│   │   ├── Docker CLI ←─TCP:2375─→ Docker Desktop 引擎
-│   │   └── Pipeline 调度
-│   │
-│   ├── MySQL 容器 (3306)
-│   ├── Redis 容器 (6379)
-│   └── poker-tracker 容器 (9090) ← Jenkins 自动部署
-│
-└── 浏览器
-    http://服务器IP:8080 → Jenkins
-    http://服务器IP:9090 → poker-tracker
-```
-
-发布流程：
-
-```
 git push
   ↓
-Jenkins: git clone
-  ↓
-Jenkins: mvn clean package
-  ↓
-Jenkins: docker build  ──TCP:2375→ Docker Desktop
-  ↓
-Jenkins: docker rm -f   ──TCP:2375→ 停止旧容器
-  ↓
-Jenkins: docker run     ──TCP:2375→ 启动新容器
-  ↓
-应用上线
+Jenkins (8080)
+  ├── git clone
+  ├── mvn clean package
+  ├── docker build -t localhost:5000/poker-tracker:latest .
+  ├── docker push localhost:5000/poker-tracker:latest
+  │
+  └──→ Docker Registry (5000)     ← 镜像仓库，存储所有版本
+           ↑
+           │ kubectl apply / helm install
+           │
+       Kubernetes 集群
+           ├── Node 1 → poker-tracker pod
+           ├── Node 2 → poker-tracker pod
+           └── ...
 ```
+
+Jenkins 只负责 **代码 → 镜像 → 推送**，不再启动容器。部署交给 Kubernetes。
 
 ---
 
 ## 二、项目准备
-
-项目结构：
 
 ```
 poker-tracker/
 ├── src/
 ├── pom.xml
 ├── Dockerfile
-└── Jenkinsfile
+├── Jenkinsfile
+├── poker-tracker.yaml
 ```
 
 ### Dockerfile
 
 ```dockerfile
-FROM openjdk:8-jdk-slim
+FROM eclipse-temurin:8-jre
+
+ARG JAR_FILE=poker-tracker.jar
+ENV TZ=Asia/Shanghai
+# 小内存应用优化：限制 JVM 堆内存和元空间
+ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 WORKDIR /app
-COPY target/poker-tracker.jar app.jar
-EXPOSE 8084
-ENTRYPOINT ["java", "-jar", "app.jar"]
+COPY target/${JAR_FILE} app.jar
+ENTRYPOINT ["sh","-c","java ${JAVA_OPTS:-} -jar app.jar"]
 ```
 
 ---
@@ -111,17 +115,16 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = 'poker-tracker'
-        CONTAINER_NAME = 'poker-tracker'
-        APP_PORT = '9090'
+        APP_NAME  = 'poker-tracker'
+        REGISTRY  = 'localhost:5000'
+        IMAGE_TAG = "${REGISTRY}/${APP_NAME}:latest"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo '=== 拉取代码 ==='
-                sh 'git config --global http.sslVerify false'
-                sh 'git clone https://github.com/woyaoxuexi1231/poker.git .'
+                git branch: 'main',
+                    url: 'https://github.com/woyaoxuexi1231/poker.git'
             }
         }
 
@@ -132,49 +135,22 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build & Push Image') {
             steps {
                 echo '=== 构建 Docker 镜像 ==='
-                sh "docker build -t ${IMAGE_NAME}:latest ."
-            }
-        }
-
-        stage('Stop Old Container') {
-            steps {
-                echo '=== 停止旧容器 ==='
-                sh "docker rm -f ${CONTAINER_NAME} || true"
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                echo '=== 启动新容器 ==='
-                sh """
-                    docker run -d \
-                      --name ${CONTAINER_NAME} \
-                      --restart=unless-stopped \
-                      -p ${APP_PORT}:8084 \
-                      -e TZ=Asia/Shanghai \
-                      ${IMAGE_NAME}:latest
-                """
-            }
-        }
-
-        stage('Verify') {
-            steps {
-                echo '=== 验证 ==='
-                sh "sleep 3 && docker ps --filter name=${CONTAINER_NAME} --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
-                sh "curl -sf -o /dev/null http://host.docker.internal:${APP_PORT} || echo '健康检查跳过'"
+                sh "docker build -t ${IMAGE_TAG} ."
+                echo '=== 推送镜像到 Registry ==='
+                sh "docker push ${IMAGE_TAG}"
             }
         }
     }
 
     post {
         success {
-            echo "✅ 部署成功 → http://服务器IP:${APP_PORT}"
+            echo "✅ 镜像已推送: ${IMAGE_TAG}"
         }
         failure {
-            echo "❌ 部署失败，查看 Console Output"
+            echo "❌ 构建失败，查看 Console Output"
         }
     }
 }
@@ -182,155 +158,122 @@ pipeline {
 
 ---
 
-## 四、推送代码
-
-```bash
-git add .
-git commit -m "add pipeline"
-git push
-```
-
----
-
-## 五、Jenkins 创建任务
-
-> **Jenkinsfile 是通用的**：上面的内容既可以存到 Git 仓库用 "Pipeline script from SCM" 引用，也可以直接粘贴到 Jenkins 的 "Pipeline script" 文本框。语法完全一样，选哪个都行。
+## 四、Jenkins 创建任务
 
 1. **新建任务** → 名称 `poker-tracker` → 选 **流水线** → OK
-2. 拉到 **流水线** 配置区域，选 **Pipeline script**，把上面的 Jenkinsfile 粘贴进去
-
-| 配置项 | 值 |
-|--------|-----|
-| Definition | `Pipeline script from SCM` |
-| SCM | `Git` |
-| Repository URL | 你的 Git 地址 |
-| Branches to build | `*/master` |
-| Script Path | `Jenkinsfile` |
-
+2. 选 **Pipeline script**，把上面的 Jenkinsfile 粘贴进去
 3. 保存 → **立即构建**
 
 ---
 
-## 六、首次构建
+## 五、首次构建
 
-点 **立即构建** → 点进构建号 → **控制台输出**，看实时日志：
+点 **立即构建** → **控制台输出**：
 
 ```
 Checkout        → git clone
 Build Jar       → mvn clean package
-Build Docker    → docker build -t poker-tracker:latest
-Stop Old        → docker rm -f poker-tracker
-Run New         → docker run -d --name poker-tracker -p 9090:8080 poker-tracker:latest
-Verify          → docker ps
+Build & Push    → docker build + docker push
 ```
 
-最后 `Finished: SUCCESS` 就完成了。
+最后看到 `✅ 镜像已推送: localhost:5000/poker-tracker:latest` 即成功。
 
-浏览器打开 `http://服务器IP:9090` 看到 poker-tracker。
-
----
-
-## 七、Pipeline 阶段视图
-
-构建完成后，回到 `poker-tracker` 任务页面，你会看到 **Stage View** 表格：
-
-```
-┌────────────┬──────────┬──────────────┬──────────┬──────────┬────────┐
-│ Checkout   │ Build Jar│ Build Docker │ Stop Old │ Run New  │ Verify │
-│ 15s ✅     │ 45s ✅   │ 22s ✅       │ 1s ✅    │ 3s ✅    │ 2s ✅  │
-└────────────┴──────────┴──────────────┴──────────┴──────────┴────────┘
-```
-
-每个阶段显示耗时和成功/失败状态，绿色 ✅ 成功，红色 ❌ 失败。点进去能看到该阶段的完整日志。
-
-> 这也是 Jenkins 被企业广泛使用的原因之一——每个项目的构建进度、每个阶段的耗时、哪步挂了，一目了然。
-
-## 八、后续更新代码
+验证镜像已推送：
 
 ```bash
-# 改完代码
-git push
-
-# Jenkins → poker-tracker → 立即构建
-# 30秒~2分钟后完成
+curl http://localhost:5000/v2/poker-tracker/tags/list
 ```
 
 ---
 
-## 八、验证 Docker 连接（排障）
+## 六、Kubernetes 拉取部署
 
-进 Jenkins 容器验证：
+镜像已经在 Registry 里了，K8s 通过 Deployment 拉取：
+
+```yaml
+# poker-tracker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: poker-tracker
+  labels:
+    app: poker-tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: poker-tracker
+  template:
+    metadata:
+      labels:
+        app: poker-tracker
+    spec:
+      containers:
+        - name: poker-tracker
+          image: localhost:5000/poker-tracker:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: poker-tracker
+  labels:
+    app: poker-tracker
+spec:
+  type: NodePort
+  selector:
+    app: poker-tracker
+  ports:
+    - port: 8084
+      targetPort: 8084
+      nodePort: 30080
+```
+
+部署：
 
 ```bash
-docker exec -it jenkins bash
-docker ps         # 应该能看到所有容器，包括 jenkins 自己
-docker images     # 能看到镜像列表
-mvn -version      # Maven 可用
-```
-
-如果 `docker ps` 报错，检查：
-
-1. Docker Desktop 是否开了 `tcp://localhost:2375`
-2. Jenkins 启动时是否有 `-e DOCKER_HOST=tcp://host.docker.internal:2375`
-
----
-
-## 九、Jenkins 容器里网络要点
-
-| 地址 | 作用 |
-|------|------|
-| `host.docker.internal` | 指向 Windows 宿主机 |
-| `host.docker.internal:2375` | Docker Desktop TCP API |
-| `host.docker.internal:9090` | 访问宿主机上暴露的应用端口 |
-| `localhost` | Jenkins 容器自己（别用它访问其他容器） |
-
----
-
-## 十、推荐：自动清理旧镜像
-
-在 Pipeline 最后加一个阶段：
-
-```groovy
-stage('Clean Images') {
-    steps {
-        sh 'docker image prune -f'
-    }
-}
+kubectl apply -f poker-tracker.yaml
 ```
 
 ---
 
-## 十一、目录结构建议
-
-```
-C:\Users\15434\Desktop\
-├── docker-data\
-│   ├── jenkins-data\    ← Jenkins 所有数据（插件/Job/凭据）
-│   ├── mysql-data\      ← MySQL 数据
-│   └── ...
-│
-├── projects\
-│   └── poker-tracker\     ← Spring Boot 项目源码
-│
-└── scripts\              ← 所有安装脚本
-```
-
----
-
-## 十二、完整流程总结
+## 七、完整流程
 
 ```
 你写代码 → git push
   ↓
 Jenkins 拉代码
   ↓
-Maven 打包 jar
+Maven 打包
   ↓
-Docker 构建镜像 ──TCP:2375→ Docker Desktop
+Docker 构建镜像
   ↓
-停止旧容器
+推送: localhost:5000/poker-tracker:latest
   ↓
-启动新容器
+Kubernetes: kubectl apply / kubectl rollout restart
   ↓
-http://服务器IP:9090  上线 poker-tracker 🎉
+应用上线
+```
+
+---
+
+## 八、后续更新
+
+```bash
+# 改完代码 → git push
+# Jenkins → poker-tracker → 立即构建（镜像自动推送到 Registry）
+# K8s 侧重启 Pod 拉最新镜像：
+kubectl rollout restart deployment poker-tracker
 ```
