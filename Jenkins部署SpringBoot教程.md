@@ -230,16 +230,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: poker-tracker
-  labels:
-    app: poker-tracker
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: poker-tracker
   ports:
     - port: 8084
       targetPort: 8084
-      nodePort: 30080
 ```
 
 部署：
@@ -250,7 +247,43 @@ kubectl apply -f poker-tracker.yaml
 
 ---
 
-## 七、完整流程
+## 七、验证部署 & 外部访问
+
+### 查看 Pod 状态
+
+```bash
+kubectl get pods -l app=poker-tracker
+kubectl get svc poker-tracker
+```
+
+### 访问地址
+
+Service 类型是 `NodePort`，K8s 在每个节点上开放 `nodePort: 30080`：
+
+```
+http://192.168.3.100:30080/poker
+```
+
+> 因为 `application.yml` 配了 `context-path: /poker`，所以路径要带 `/poker`。
+
+局域网内任意设备都能通过 `http://192.168.3.100:30080/poker` 访问。
+
+### 排查
+
+```bash
+# Pod 是否 Running
+kubectl get pods
+
+# 查看启动日志（数据库连不上最常见）
+kubectl logs -l app=poker-tracker --tail=50
+
+# Service 端口映射
+kubectl describe svc poker-tracker
+```
+
+---
+
+## 八、完整流程
 
 ```
 你写代码 → git push
@@ -265,12 +298,12 @@ Docker 构建镜像
   ↓
 Kubernetes: kubectl apply / kubectl rollout restart
   ↓
-应用上线
+http://192.168.3.100:30080/poker  ← 外部访问
 ```
 
 ---
 
-## 八、后续更新
+## 九、后续更新
 
 ```bash
 # 改完代码 → git push
